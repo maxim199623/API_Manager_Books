@@ -58,6 +58,12 @@ class Book(Base):
         index=True,
     )
 
+    genres: Mapped[str | None] = mapped_column(
+        "genres",
+        Text,
+        nullable=True,
+    )
+
     # FORMAT: str
     format: Mapped[str | None] = mapped_column(
         "format",

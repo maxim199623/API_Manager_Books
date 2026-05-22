@@ -266,3 +266,4 @@ cython_debug/
 /Tests
 /src/api/security/cert/jwt_private.pem
 /src/api/security/cert/jwt_public.pem
+/app2.db

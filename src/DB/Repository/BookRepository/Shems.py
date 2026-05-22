@@ -12,6 +12,7 @@ class BookBase(BaseModel):
     author: str | None = None
     description: str | None = None
     series: str | None = None
+    genres: str | None = None
     format: str | None = None
     file: bytes | None = None       # bytea
 
@@ -31,9 +32,6 @@ class BookBase(BaseModel):
                 raise ValueError("Invalid base64 data") from e
         raise TypeError("Expected base64 string or bytes")
 
-
-
-
 class BookCreate(BookBase):
     """
     для создания книги.
@@ -50,6 +48,7 @@ class BookUpdate(BaseModel):
     author: str | None = None
     description: str | None = None
     series: str | None = None
+    genres: str | None = None
     format: str | None = None
     file: bytes | None = None
 
