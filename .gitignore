@@ -264,6 +264,16 @@ cython_debug/
 /Тест/cert.pem
 /Тест
 /Tests
+/Tests/
+/Tests/*.py
+/tests/
+/tests/*.py
 /src/api/security/cert/jwt_private.pem
 /src/api/security/cert/jwt_public.pem
 /app2.db
+/.worktrees/
+/docs/superpowers/plans/2026-05-22-favorite-books.md
+/docs/superpowers/specs/2026-05-22-favorite-books-design.md
+/.tmp_sqlite_root/manual.db
+/.tmp_sqlite_root/manual.db-journal
+/Тест/

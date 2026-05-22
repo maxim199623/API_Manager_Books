@@ -4,6 +4,7 @@ from starlette.requests import HTTPConnection
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
 from src.DB.Repository.BookRepository.book_repository import BookRepository
+from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.user_repository import UserRepository
 from src.core.config import SettingsManager
@@ -33,6 +34,11 @@ async def get_log_repo(session=Depends(get_session)) -> LogRepository:
 async def get_book_repo(session=Depends(get_session)) -> BookRepository:
     """Получаем BookRepository"""
     return BookRepository(session)
+
+
+async def get_favorite_book_repo(session=Depends(get_session)) -> FavoriteBookRepository:
+    """Получаем FavoriteBookRepository"""
+    return FavoriteBookRepository(session)
 
 
 async def get_book_chapter_repo(session=Depends(get_session)) -> BookChapterRepository:

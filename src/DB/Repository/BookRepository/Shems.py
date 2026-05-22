@@ -74,6 +74,7 @@ class BookUpdate(BaseModel):
 class BookRead(BookBase):
     id: uuid.UUID
     created_at: datetime
+    is_favorite: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

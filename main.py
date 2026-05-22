@@ -4,8 +4,6 @@ import uvicorn
 from src.api.api import app
 from src.api.security.utils import ensure_self_signed_cert
 
-
-
 def main():
     cert_file, key_file = ensure_self_signed_cert("cert.pem", "key.pem",
                                                   common_name="localhost",
@@ -18,8 +16,6 @@ def main():
         ssl_certfile=cert_file,
         ssl_keyfile=key_file,
     )
-
-
 
 
 if __name__ == '__main__':
