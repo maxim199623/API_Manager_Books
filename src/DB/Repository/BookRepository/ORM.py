@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Integer, Text, LargeBinary, DateTime, func, Uuid
+from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.DB.base import Base
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     # только для проверки типов, чтобы не ловить циклический импорт
     from src.DB.Repository.BookChapterRepository.ORM import BookChapter
 
+
 class Book(Base):
     __tablename__ = "books"
 
@@ -18,13 +19,6 @@ class Book(Base):
         Uuid,
         primary_key=True,
         default=uuid.uuid4,
-    )
-
-    # COVER: bytea
-    cover: Mapped[bytes | None] = mapped_column(
-        "cover",
-        LargeBinary,
-        nullable=True,
     )
 
     # TITLE: str
@@ -71,11 +65,38 @@ class Book(Base):
         nullable=True,
     )
 
-    # FILE: bytea
-    file: Mapped[bytes | None] = mapped_column(
-        "file",
-        LargeBinary,
+    cover_mime: Mapped[str | None] = mapped_column(
+        "cover_mime",
+        String(255),
         nullable=True,
+    )
+
+    cover_size: Mapped[int] = mapped_column(
+        "cover_size",
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
+    file_name: Mapped[str | None] = mapped_column(
+        "file_name",
+        String(255),
+        nullable=True,
+    )
+
+    file_mime: Mapped[str | None] = mapped_column(
+        "file_mime",
+        String(255),
+        nullable=True,
+    )
+
+    file_size: Mapped[int] = mapped_column(
+        "file_size",
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -89,4 +110,70 @@ class Book(Base):
         back_populates="book",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+    cover_chunks: Mapped[list["BookCoverChunk"]] = relationship(
+        "BookCoverChunk",
+        back_populates="book",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="BookCoverChunk.chunk_index",
+    )
+
+    file_chunks: Mapped[list["BookFileChunk"]] = relationship(
+        "BookFileChunk",
+        back_populates="book",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="BookFileChunk.chunk_index",
+    )
+
+
+class BookCoverChunk(Base):
+    __tablename__ = "book_cover_chunks"
+
+    book_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("books.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    chunk_index: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    data: Mapped[bytes] = mapped_column(
+        LargeBinary,
+        nullable=False,
+    )
+
+    book: Mapped["Book"] = relationship(
+        "Book",
+        back_populates="cover_chunks",
+    )
+
+
+class BookFileChunk(Base):
+    __tablename__ = "book_file_chunks"
+
+    book_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("books.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    chunk_index: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    data: Mapped[bytes] = mapped_column(
+        LargeBinary,
+        nullable=False,
+    )
+
+    book: Mapped["Book"] = relationship(
+        "Book",
+        back_populates="file_chunks",
     )

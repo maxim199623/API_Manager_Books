@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from fastapi import UploadFile, File
-from pydantic import BaseModel, ConfigDict, Field , field_validator, field_serializer
 from base64 import b64decode, b64encode
+
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class BookBase(BaseModel):
@@ -15,6 +15,11 @@ class BookBase(BaseModel):
     genres: str | None = None
     format: str | None = None
     file: bytes | None = None       # bytea
+    cover_mime: str | None = None
+    cover_size: int = 0
+    file_name: str | None = None
+    file_mime: str | None = None
+    file_size: int = 0
 
     # ---------- вход: base64 → bytes ----------
 
@@ -31,6 +36,24 @@ class BookBase(BaseModel):
             except Exception as e:
                 raise ValueError("Invalid base64 data") from e
         raise TypeError("Expected base64 string or bytes")
+
+class BookListRead(BaseModel):
+    id: uuid.UUID
+    title: str
+    author: str | None = None
+    description: str | None = None
+    series: str | None = None
+    genres: str | None = None
+    format: str | None = None
+    created_at: datetime
+    is_favorite: bool = False
+    cover_mime: str | None = None
+    cover_size: int = 0
+    file_name: str | None = None
+    file_mime: str | None = None
+    file_size: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
 
 class BookCreate(BookBase):
     """
@@ -51,6 +74,9 @@ class BookUpdate(BaseModel):
     genres: str | None = None
     format: str | None = None
     file: bytes | None = None
+    cover_mime: str | None = None
+    file_name: str | None = None
+    file_mime: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +95,21 @@ class BookUpdate(BaseModel):
             except Exception as e:
                 raise ValueError("Invalid base64 data") from e
         raise TypeError("Expected base64 string or bytes")
+
+
+class BookMetadataUpdate(BaseModel):
+    """
+    Публичный PATCH-контракт только для текстовых метаданных книги.
+    Бинарные поля обновляются отдельными multipart-endpoints.
+    """
+    title: str | None = None
+    author: str | None = None
+    description: str | None = None
+    series: str | None = None
+    genres: str | None = None
+    format: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class BookRead(BookBase):

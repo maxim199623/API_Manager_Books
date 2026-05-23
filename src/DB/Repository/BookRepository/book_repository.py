@@ -1,12 +1,15 @@
+from dataclasses import dataclass
 import uuid
-from typing import Sequence
+from typing import AsyncIterable, AsyncIterator, Sequence
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.DB.Repository.BookRepository.ORM import Book
+from src.DB.Repository.BookRepository.ORM import Book, BookCoverChunk, BookFileChunk
 from src.DB.Repository.BookRepository.Shems import BookCreate, BookUpdate
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
+
+BOOK_BINARY_CHUNK_SIZE = 1024 * 1024
 
 
 class BookNotFoundError(Exception):
@@ -14,23 +17,50 @@ class BookNotFoundError(Exception):
     pass
 
 
+@dataclass(frozen=True)
+class BookBinaryMeta:
+    content_type: str | None
+    file_name: str | None
+    size: int
+
+
 class BookRepository:
     """
     Репозиторий для работы с таблицей books.
 
-    Поля: ID, COVER(bytea), TITLE, AUTHOR, DESCRIPTION, SERIES, FORMAT, FILE(bytea).
+    Крупные бинарные данные книги хранятся chunk-таблицах, а не в books.
     """
 
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def create_book(self, data: BookCreate) -> Book:
+    async def create_book(
+        self,
+        data: BookCreate,
+        *,
+        cover_chunks: AsyncIterable[bytes] | None = None,
+        file_chunks: AsyncIterable[bytes] | None = None,
+    ) -> Book:
         """
         Создать новую книгу.
         """
         book = build_model_from_schema(Book, data)
 
         self._session.add(book)
+        await self._session.flush()
+        await self._replace_cover(
+            book,
+            payload=data.cover,
+            chunks=cover_chunks,
+            content_type=data.cover_mime,
+        )
+        await self._replace_file(
+            book,
+            payload=data.file,
+            chunks=file_chunks,
+            content_type=data.file_mime,
+            file_name=data.file_name,
+        )
         await self._session.flush()
         await self._session.refresh(book)
         return book
@@ -100,7 +130,14 @@ class BookRepository:
     ) -> Sequence[Book]:
         return await self.list_books(series=series, offset=offset, limit=limit)
 
-    async def update_book(self, book_id: uuid.UUID, data: BookUpdate) -> Book:
+    async def update_book(
+        self,
+        book_id: uuid.UUID,
+        data: BookUpdate,
+        *,
+        cover_chunks: AsyncIterable[bytes] | None = None,
+        file_chunks: AsyncIterable[bytes] | None = None,
+    ) -> Book:
         """
         Частично обновить книгу.
 
@@ -111,6 +148,25 @@ class BookRepository:
         book = await self.ensure_exists(book_id)
 
         patch_model_from_schema(book, data)
+
+        if cover_chunks is not None or "cover" in data.model_fields_set:
+            await self._replace_cover(
+                book,
+                payload=data.cover,
+                chunks=cover_chunks,
+                content_type=data.cover_mime,
+                preserve_meta=cover_chunks is None and data.cover is not None,
+            )
+
+        if file_chunks is not None or "file" in data.model_fields_set:
+            await self._replace_file(
+                book,
+                payload=data.file,
+                chunks=file_chunks,
+                content_type=data.file_mime,
+                file_name=data.file_name,
+                preserve_meta=file_chunks is None and data.file is not None,
+            )
 
         await self._session.flush()
         await self._session.refresh(book)
@@ -126,3 +182,160 @@ class BookRepository:
         )
         res = await self._session.execute(stmt)
         return res.scalar_one_or_none()
+
+    async def get_cover_meta(self, book_id: uuid.UUID) -> BookBinaryMeta | None:
+        book = await self.get_by_id(book_id)
+        if book is None or book.cover_size <= 0:
+            return None
+
+        return BookBinaryMeta(
+            content_type=book.cover_mime,
+            file_name=None,
+            size=book.cover_size,
+        )
+
+    async def get_file_meta(self, book_id: uuid.UUID) -> BookBinaryMeta | None:
+        book = await self.get_by_id(book_id)
+        if book is None or book.file_size <= 0:
+            return None
+
+        return BookBinaryMeta(
+            content_type=book.file_mime,
+            file_name=book.file_name,
+            size=book.file_size,
+        )
+
+    async def get_cover_bytes(self, book_id: uuid.UUID) -> bytes | None:
+        chunks = [chunk async for chunk in self.iter_cover_chunks(book_id)]
+        if not chunks:
+            return None
+        return b"".join(chunks)
+
+    async def get_file_bytes(self, book_id: uuid.UUID) -> bytes | None:
+        chunks = [chunk async for chunk in self.iter_file_chunks(book_id)]
+        if not chunks:
+            return None
+        return b"".join(chunks)
+
+    async def iter_cover_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        stmt = (
+            select(BookCoverChunk.data)
+            .where(BookCoverChunk.book_id == book_id)
+            .order_by(BookCoverChunk.chunk_index)
+        )
+        result = await self._session.stream_scalars(stmt)
+        async for chunk in result:
+            yield chunk
+
+    async def iter_file_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        stmt = (
+            select(BookFileChunk.data)
+            .where(BookFileChunk.book_id == book_id)
+            .order_by(BookFileChunk.chunk_index)
+        )
+        result = await self._session.stream_scalars(stmt)
+        async for chunk in result:
+            yield chunk
+
+    async def _replace_cover(
+        self,
+        book: Book,
+        *,
+        payload: bytes | None,
+        chunks: AsyncIterable[bytes] | None,
+        content_type: str | None,
+        preserve_meta: bool = False,
+    ) -> None:
+        await self._delete_chunks(BookCoverChunk, book.id)
+        size = await self._store_chunks(
+            BookCoverChunk,
+            book.id,
+            payload=payload,
+            chunks=chunks,
+        )
+        if size > 0:
+            if content_type is not None:
+                book.cover_mime = content_type
+        else:
+            book.cover_mime = book.cover_mime if preserve_meta else None
+        book.cover_size = size
+
+    async def _replace_file(
+        self,
+        book: Book,
+        *,
+        payload: bytes | None,
+        chunks: AsyncIterable[bytes] | None,
+        content_type: str | None,
+        file_name: str | None,
+        preserve_meta: bool = False,
+    ) -> None:
+        await self._delete_chunks(BookFileChunk, book.id)
+        size = await self._store_chunks(
+            BookFileChunk,
+            book.id,
+            payload=payload,
+            chunks=chunks,
+        )
+        if size > 0:
+            if content_type is not None:
+                book.file_mime = content_type
+            if file_name is not None:
+                book.file_name = file_name
+        else:
+            if not preserve_meta:
+                book.file_mime = None
+                book.file_name = None
+        book.file_size = size
+
+    async def _delete_chunks(self, chunk_model, book_id: uuid.UUID) -> None:
+        stmt = delete(chunk_model).where(chunk_model.book_id == book_id)
+        await self._session.execute(stmt)
+
+    async def _store_chunks(
+        self,
+        chunk_model,
+        book_id: uuid.UUID,
+        *,
+        payload: bytes | None,
+        chunks: AsyncIterable[bytes] | None,
+    ) -> int:
+        if chunks is None and payload is None:
+            return 0
+
+        total_size = 0
+        chunk_index = 0
+
+        async for chunk in self._iter_input_chunks(payload=payload, chunks=chunks):
+            self._session.add(
+                chunk_model(
+                    book_id=book_id,
+                    chunk_index=chunk_index,
+                    data=chunk,
+                )
+            )
+            total_size += len(chunk)
+            chunk_index += 1
+
+        await self._session.flush()
+        return total_size
+
+    async def _iter_input_chunks(
+        self,
+        *,
+        payload: bytes | None,
+        chunks: AsyncIterable[bytes] | None,
+    ) -> AsyncIterator[bytes]:
+        if chunks is not None:
+            async for chunk in chunks:
+                if chunk:
+                    yield chunk
+            return
+
+        if payload is None:
+            return
+
+        for start in range(0, len(payload), BOOK_BINARY_CHUNK_SIZE):
+            chunk = payload[start:start + BOOK_BINARY_CHUNK_SIZE]
+            if chunk:
+                yield chunk
