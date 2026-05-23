@@ -17,6 +17,7 @@ from src.api.Dependencices import get_log_repo, get_book_repo, get_book_chapter_
 from src.api.Shems import ChaptersCountResponse
 from src.api.security.utils import require_admin, require_auth
 from src.api.websocket import manager as ws_manager
+from urllib.parse import quote
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -190,6 +191,11 @@ async def get_book_file(
         )
 
     filename = meta.file_name or f"{book_id}.bin"
+    ascii_name = filename.encode("ascii", "ignore").decode() or f"{book_id}.bin"
+
+    content_disposition = f'attachment; filename="{ascii_name}"'
+    if filename != ascii_name:
+        content_disposition += f"; filename*=UTF-8''{quote(filename, safe='')}"
 
     async def iter_file():
         async with db_manager.session() as session:
@@ -201,7 +207,7 @@ async def get_book_file(
         iter_file(),
         media_type=meta.content_type or "application/octet-stream",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            "Content-Disposition": content_disposition
         },
     )
 
