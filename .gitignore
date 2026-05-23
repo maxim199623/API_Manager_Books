@@ -277,3 +277,7 @@ cython_debug/
 /.tmp_sqlite_root/manual.db
 /.tmp_sqlite_root/manual.db-journal
 /Тест/
+/output/pdf/api_client_contract_openapi_like.pdf
+/output/pdf/api_manager_books.openapi.json
+/output/pdf/api_manager_books.openapi-like.yaml
+/tmp/pdfs/generate_api_client_contract_pdf.py
