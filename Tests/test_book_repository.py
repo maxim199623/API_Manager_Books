@@ -290,6 +290,138 @@ class TestBookRepository:
         assert [book.title for book in asc_books] == ["Older", "Newer"]
         assert [book.title for book in desc_books] == ["Newer", "Older"]
 
+    async def test_list_books_sorts_by_user_progress(
+        self,
+        book_repo: BookRepository,
+        session,
+    ):
+        from src.DB.Repository.BookChapterRepository.ORM import BookChapter
+        from src.DB.Repository.LogRepository.ORM import LogEntry
+        from src.DB.Repository.UserRepository.Enums import UserRole
+        from src.DB.Repository.UserRepository.ORM import User
+
+        user = User(
+            email="progress-reader@example.com",
+            password_hash=b"hash",
+            role=UserRole.USER,
+        )
+        other_user = User(
+            email="other-progress-reader@example.com",
+            password_hash=b"hash",
+            role=UserRole.USER,
+        )
+        session.add_all([user, other_user])
+        await session.flush()
+
+        books = {}
+        for title in ["Low Progress", "Mid Progress", "High Progress", "No Chapters"]:
+            books[title] = await book_repo.create_book(
+                BookCreate(
+                    cover=None,
+                    title=title,
+                    author=None,
+                    description=None,
+                    series=None,
+                    format="epub",
+                    file=None,
+                )
+            )
+
+        chapters_by_title = {}
+        for title in ["Low Progress", "Mid Progress", "High Progress"]:
+            chapters_by_title[title] = []
+            for chapter_num in range(1, 5):
+                chapter = BookChapter(
+                    book_id=books[title].id,
+                    chapter=chapter_num,
+                    chapter_name=None,
+                    description=f"{title} chapter {chapter_num}",
+                    file=None,
+                )
+                session.add(chapter)
+                chapters_by_title[title].append(chapter)
+        await session.flush()
+
+        session.add_all(
+            [
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["Low Progress"][0].id,
+                ),
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["Mid Progress"][0].id,
+                ),
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["Mid Progress"][1].id,
+                ),
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["High Progress"][0].id,
+                ),
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["High Progress"][1].id,
+                ),
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["High Progress"][2].id,
+                ),
+                LogEntry(
+                    user_id=user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["High Progress"][2].id,
+                ),
+                LogEntry(
+                    user_id=other_user.id,
+                    action="get_chapter",
+                    entity="book_chapters",
+                    entity_id=chapters_by_title["Low Progress"][1].id,
+                ),
+            ]
+        )
+        await session.flush()
+
+        desc_books = await book_repo.list_books(
+            sort_by="progress",
+            sort_dir="desc",
+            user_id=user.id,
+            limit=10,
+        )
+        asc_books = await book_repo.list_books(
+            sort_by="progress",
+            sort_dir="asc",
+            user_id=user.id,
+            limit=10,
+        )
+
+        assert [book.title for book in desc_books] == [
+            "High Progress",
+            "Mid Progress",
+            "Low Progress",
+            "No Chapters",
+        ]
+        assert [book.title for book in asc_books] == [
+            "No Chapters",
+            "Low Progress",
+            "Mid Progress",
+            "High Progress",
+        ]
+
     async def test_delete_book(self, book_repo: BookRepository):
         book = await book_repo.create_book(
             BookCreate(

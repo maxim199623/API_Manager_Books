@@ -2,16 +2,18 @@ from dataclasses import dataclass
 import uuid
 from typing import AsyncIterable, AsyncIterator, Literal, Sequence
 
-from sqlalchemy import select, delete
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.DB.Repository.BookChapterRepository.ORM import BookChapter
+from src.DB.Repository.LogRepository.ORM import LogEntry
 from src.DB.Repository.BookRepository.ORM import Book, BookCoverChunk, BookFileChunk
 from src.DB.Repository.BookRepository.Shems import BookCreate, BookUpdate
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
 
 BOOK_BINARY_CHUNK_SIZE = 1024 * 1024
 
-BookSortField = Literal["created_at", "title"]
+BookSortField = Literal["created_at", "progress", "title"]
 SortDirection = Literal["asc", "desc"]
 
 
@@ -100,6 +102,7 @@ class BookRepository:
         limit: int = 100,
         sort_by: BookSortField = "created_at",
         sort_dir: SortDirection = "desc",
+        user_id: uuid.UUID | None = None,
     ) -> Sequence[Book]:
         """
         Общий метод выборки книг с фильтрами по автору и серии.
@@ -112,11 +115,50 @@ class BookRepository:
         if series is not None:
             stmt = stmt.where(Book.series == series)
 
-        sort_columns = {
-            "created_at": Book.created_at,
-            "title": Book.title,
-        }
-        sort_expression = sort_columns[sort_by]
+        if sort_by == "progress":
+            if user_id is None:
+                raise ValueError("user_id is required for progress sorting")
+
+            chapters_count = (
+                select(
+                    BookChapter.book_id.label("book_id"),
+                    func.count(BookChapter.id).label("chapters_count"),
+                )
+                .group_by(BookChapter.book_id)
+                .subquery()
+            )
+            read_count = (
+                select(
+                    BookChapter.book_id.label("book_id"),
+                    func.count(func.distinct(LogEntry.entity_id)).label("read_count"),
+                )
+                .join(LogEntry, LogEntry.entity_id == BookChapter.id)
+                .where(
+                    LogEntry.user_id == user_id,
+                    LogEntry.action == "get_chapter",
+                    LogEntry.entity == "book_chapters",
+                )
+                .group_by(BookChapter.book_id)
+                .subquery()
+            )
+
+            stmt = (
+                stmt.outerjoin(chapters_count, chapters_count.c.book_id == Book.id)
+                .outerjoin(read_count, read_count.c.book_id == Book.id)
+            )
+            total_chapters = func.coalesce(chapters_count.c.chapters_count, 0)
+            read_chapters = func.coalesce(read_count.c.read_count, 0)
+            sort_expression = case(
+                (total_chapters == 0, 0.0),
+                else_=read_chapters * 1.0 / total_chapters,
+            )
+        else:
+            sort_columns = {
+                "created_at": Book.created_at,
+                "title": Book.title,
+            }
+            sort_expression = sort_columns[sort_by]
+
         ordered_expression = (
             sort_expression.desc()
             if sort_dir == "desc"
