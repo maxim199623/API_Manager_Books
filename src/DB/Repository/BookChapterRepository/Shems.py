@@ -27,6 +27,13 @@ class BookChapterUpdate(BaseModel):
     file: bytes | None = None
 
 
+class BookChapterListRead(BaseModel):
+    chapter: int
+    chapter_name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class BookChapterRead(BookChapterBase):
     id: uuid.UUID
     book_id: uuid.UUID

@@ -6,7 +6,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
 from src.DB.Repository import BookChapter
-from src.DB.Repository.BookChapterRepository.Shems import BookChapterRead, BookChapterCreate, BookChapterUpdate
+from src.DB.Repository.BookChapterRepository.Shems import (
+    BookChapterCreate,
+    BookChapterListRead,
+    BookChapterRead,
+    BookChapterUpdate,
+)
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository, BookChapterNotFoundError
 from src.DB.Repository.BookRepository.Shems import BookCreate, BookListRead, BookMetadataUpdate, BookUpdate
 from src.DB.Repository.BookRepository.book_repository import BOOK_BINARY_CHUNK_SIZE, BookRepository, BookNotFoundError
@@ -463,6 +468,36 @@ async def add_book_chapters(
         )
     )
     return
+
+
+@router.get(
+    "/{book_id}/chapters",
+    response_model=list[BookChapterListRead],
+    status_code=status.HTTP_200_OK,
+)
+async def get_book_chapters(
+    book_id: uuid.UUID,
+    book_repo: BookRepository = Depends(get_book_repo),
+    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
+    current_user: UserRead = Depends(require_auth),
+):
+    """
+    Вернуть номера и названия глав книги в порядке номеров глав.
+    """
+    try:
+        book = await book_repo.ensure_exists(book_id)
+    except BookNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not found",
+        )
+
+    chapters = await chapter_repo.list_chapter_headers(book.id)
+    return [
+        BookChapterListRead.model_validate(chapter, from_attributes=True)
+        for chapter in chapters
+    ]
+
 
 @router.patch("/{book_id}/chapters/{chapter_num}",status_code=status.HTTP_200_OK)
 async def update_book_chapter(
