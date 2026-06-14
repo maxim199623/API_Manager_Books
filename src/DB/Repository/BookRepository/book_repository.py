@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import uuid
-from typing import AsyncIterable, AsyncIterator, Sequence
+from typing import AsyncIterable, AsyncIterator, Literal, Sequence
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,9 @@ from src.DB.Repository.BookRepository.Shems import BookCreate, BookUpdate
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
 
 BOOK_BINARY_CHUNK_SIZE = 1024 * 1024
+
+BookSortField = Literal["created_at", "title"]
+SortDirection = Literal["asc", "desc"]
 
 
 class BookNotFoundError(Exception):
@@ -95,6 +98,8 @@ class BookRepository:
         series: str | None = None,
         offset: int = 0,
         limit: int = 100,
+        sort_by: BookSortField = "created_at",
+        sort_dir: SortDirection = "desc",
     ) -> Sequence[Book]:
         """
         Общий метод выборки книг с фильтрами по автору и серии.
@@ -107,7 +112,18 @@ class BookRepository:
         if series is not None:
             stmt = stmt.where(Book.series == series)
 
-        stmt = stmt.order_by(Book.id).offset(offset).limit(limit)
+        sort_columns = {
+            "created_at": Book.created_at,
+            "title": Book.title,
+        }
+        sort_expression = sort_columns[sort_by]
+        ordered_expression = (
+            sort_expression.desc()
+            if sort_dir == "desc"
+            else sort_expression.asc()
+        )
+
+        stmt = stmt.order_by(ordered_expression, Book.id.asc()).offset(offset).limit(limit)
 
         res = await self._session.execute(stmt)
         return res.scalars().all()
