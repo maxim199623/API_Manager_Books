@@ -1,4 +1,5 @@
 import uuid
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -20,6 +21,9 @@ from src.api.websocket import manager as ws_manager
 from urllib.parse import quote
 
 router = APIRouter(prefix="/books", tags=["books"])
+
+BookSortField = Literal["created_at", "progress", "title"]
+SortDirection = Literal["asc", "desc"]
 
 
 async def _iter_upload_chunks(upload: UploadFile):
@@ -123,15 +127,31 @@ async def add_book(
 
 
 @router.get("/", response_model=list[BookListRead])
-async def get_books(author: str | None = Query(default=None, description="Фильтр по автору"),
+async def get_books(
+    author: str | None = Query(default=None, description="Фильтр по автору"),
     series: str | None = Query(default=None, description="Фильтр по серии"),
-        book_repo: BookRepository = Depends(get_book_repo),
-        favorite_book_repo: FavoriteBookRepository = Depends(get_favorite_book_repo),
-        current_user: UserRead = Depends(require_auth)):
+    sort_by: Annotated[
+        BookSortField,
+        Query(description="Поле сортировки: created_at, progress, title"),
+    ] = "created_at",
+    sort_dir: Annotated[
+        SortDirection,
+        Query(description="Направление сортировки: asc или desc"),
+    ] = "desc",
+    book_repo: BookRepository = Depends(get_book_repo),
+    favorite_book_repo: FavoriteBookRepository = Depends(get_favorite_book_repo),
+    current_user: UserRead = Depends(require_auth),
+):
     """
-        Получить список книг с возможностью фильтрации по автору и серии.
-        """
-    books = await book_repo.list_books(author=author,series=series)
+    Получить список книг с фильтрацией и сортировкой.
+    """
+    books = await book_repo.list_books(
+        author=author,
+        series=series,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        user_id=current_user.id,
+    )
     if not books:
         return []
 
