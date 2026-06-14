@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import uuid
 from typing import Sequence
 
@@ -12,6 +13,12 @@ from src.DB.Repository.utils import patch_model_from_schema, build_model_from_sc
 class BookChapterNotFoundError(Exception):
     """Глава не найдена."""
     pass
+
+
+@dataclass(frozen=True)
+class BookChapterHeader:
+    chapter: int
+    chapter_name: str | None
 
 
 class BookChapterRepository:
@@ -91,7 +98,7 @@ class BookChapterRepository:
         book_id: uuid.UUID,
         *,
         offset: int = 0,
-        limit: int = 100,
+        limit: int = 1000,
     ) -> Sequence[BookChapter]:
         """
         Список глав книги, отсортированных по номеру.
@@ -105,6 +112,27 @@ class BookChapterRepository:
         )
         res = await self._session.execute(stmt)
         return res.scalars().all()
+
+    async def list_chapter_headers(
+        self,
+        book_id: uuid.UUID,
+    ) -> Sequence[BookChapterHeader]:
+        """
+        Получение списка с названием и номером главы
+        """
+        stmt = (
+            select(BookChapter.chapter, BookChapter.chapter_name)
+            .where(BookChapter.book_id == book_id)
+            .order_by(BookChapter.chapter)
+        )
+        res = await self._session.execute(stmt)
+        return [
+            BookChapterHeader(
+                chapter=row.chapter,
+                chapter_name=row.chapter_name,
+            )
+            for row in res.all()
+        ]
 
     async def count_chapters(self, book_id: uuid.UUID) -> int:
         """
