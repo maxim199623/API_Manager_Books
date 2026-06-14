@@ -22,24 +22,30 @@ class BookChapterRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def create_chapter(
+    async def create_chapters(
         self,
         book_id: uuid.UUID,
-        data: BookChapterCreate,
-    ) -> BookChapter:
+        data: Sequence[BookChapterCreate],
+    ) -> int:
         """
-        Создать новую главу для книги book_id.
+        Добавить список глав для книги book_id.
         """
-        chapter = build_model_from_schema(
+        if not data:
+            return 0
+
+        chapters = [
+        build_model_from_schema(
             BookChapter,
-            data,
+            chapter,
             extra={"book_id": book_id},
         )
+        for chapter in data
+    ]
 
-        self._session.add(chapter)
+
+        self._session.add_all(chapters)
         await self._session.flush()
-        await self._session.refresh(chapter)
-        return chapter
+        return len(chapters)
 
     async def get_by_id(self, chapter_id: uuid.UUID) -> BookChapter | None:
         """Получение главы по ID"""

@@ -436,18 +436,22 @@ async def add_book_chapters(
             detail="Chapter list cannot be empty",
         )
 
-    created: list[BookChapter] = []
+    chapter_numbers = [ch.chapter for ch in chapters]
+    if len(chapter_numbers) != len(set(chapter_numbers)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Duplicate chapter numbers in request",
+        )
 
-    #Создаём главы по одной
+    #Создаём главы
     try:
-        for ch in chapters:
-            chapter = await chapter_repo.create_chapter(book_id=book.id, data=ch)
-            created.append(chapter)
+        created_count = await chapter_repo.create_chapters(book_id=book.id, data=chapters)
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Duplicate chapter numbers for this book",
         )
+
     #Логируем операцию целиком
     await log_repo.log_from_dto(
         LogCreate(
@@ -455,7 +459,7 @@ async def add_book_chapters(
             action="add_book_chapters",
             entity="book_chapters",
             entity_id=book.id,
-            details=f"Добавлено глав: {len(created)} для книги '{book.title}' (id={book.id})",
+            details=f"Добавлено глав: {created_count} для книги '{book.title}' (id={book.id})",
         )
     )
     return
