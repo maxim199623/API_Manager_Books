@@ -38,13 +38,15 @@ class FakeBook:
 class FakeBookRepo:
     def __init__(self, books: list[FakeBook]):
         self.books = books
-        self.calls: list[dict[str, str | None]] = []
+        self.calls: list[dict[str, object]] = []
 
     async def list_books(
         self,
         *,
         author: str | None,
         series: str | None,
+        offset: int = 0,
+        limit: int = 100,
         sort_by: str = "created_at",
         sort_dir: str = "desc",
         user_id: uuid.UUID | None = None,
@@ -53,6 +55,8 @@ class FakeBookRepo:
             {
                 "author": author,
                 "series": series,
+                "offset": offset,
+                "limit": limit,
                 "sort_by": sort_by,
                 "sort_dir": sort_dir,
                 "user_id": user_id,
@@ -292,6 +296,8 @@ async def test_get_books_passes_author_and_series_filters_to_repository():
         {
             "author": "Arkady Strugatsky",
             "series": "Noon Universe",
+            "offset": 0,
+            "limit": 100,
             "sort_by": "created_at",
             "sort_dir": "desc",
             "user_id": current_user.id,
@@ -319,8 +325,39 @@ async def test_get_books_passes_sorting_to_repository():
         {
             "author": None,
             "series": None,
+            "offset": 0,
+            "limit": 100,
             "sort_by": "progress",
             "sort_dir": "asc",
+            "user_id": current_user.id,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_books_passes_pagination_to_repository():
+    current_user = make_user()
+    book_repo = FakeBookRepo([])
+    favorite_repo = FakeFavoriteBookRepo(set())
+
+    await get_books(
+        author=None,
+        series=None,
+        offset=20,
+        limit=10,
+        book_repo=book_repo,
+        favorite_book_repo=favorite_repo,
+        current_user=current_user,
+    )
+
+    assert book_repo.calls == [
+        {
+            "author": None,
+            "series": None,
+            "offset": 20,
+            "limit": 10,
+            "sort_by": "created_at",
+            "sort_dir": "desc",
             "user_id": current_user.id,
         }
     ]

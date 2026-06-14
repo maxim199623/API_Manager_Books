@@ -130,6 +130,14 @@ async def add_book(
 async def get_books(
     author: str | None = Query(default=None, description="Фильтр по автору"),
     series: str | None = Query(default=None, description="Фильтр по серии"),
+    offset: Annotated[
+        int,
+        Query(ge=0, description="Смещение от начала отсортированного списка"),
+    ] = 0,
+    limit: Annotated[
+        int,
+        Query(ge=1, le=1000, description="Максимальное количество книг в ответе"),
+    ] = 100,
     sort_by: Annotated[
         BookSortField,
         Query(description="Поле сортировки: created_at, progress, title"),
@@ -148,6 +156,8 @@ async def get_books(
     books = await book_repo.list_books(
         author=author,
         series=series,
+        offset=offset,
+        limit=limit,
         sort_by=sort_by,
         sort_dir=sort_dir,
         user_id=current_user.id,
