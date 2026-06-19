@@ -80,31 +80,22 @@ class FakeFavoriteBookRepo:
         return self.favorite_ids
 
 
-class FakeEnsureExistsBookRepo:
-    def __init__(self, *, exists: bool = True):
-        self.exists = exists
-        self.calls: list[uuid.UUID] = []
+class FakeFavoriteService:
+    def __init__(self, *, favorite_exists: bool = True, unfavorite_exists: bool = True):
+        self.favorite_exists = favorite_exists
+        self.unfavorite_exists = unfavorite_exists
+        self.favorite_calls: list[tuple[uuid.UUID, uuid.UUID]] = []
+        self.unfavorite_calls: list[tuple[uuid.UUID, uuid.UUID]] = []
 
-    async def ensure_exists(self, book_id: uuid.UUID) -> None:
-        self.calls.append(book_id)
-        if not self.exists:
+    async def favorite_book(self, user_id: uuid.UUID, book_id: uuid.UUID) -> None:
+        self.favorite_calls.append((user_id, book_id))
+        if not self.favorite_exists:
             raise BookNotFoundError
 
-
-class FakeFavoriteMutationRepo:
-    def __init__(self, *, add_results: list[bool] | None = None, remove_results: list[bool] | None = None):
-        self.add_results = add_results or []
-        self.remove_results = remove_results or []
-        self.add_calls: list[tuple[uuid.UUID, uuid.UUID]] = []
-        self.remove_calls: list[tuple[uuid.UUID, uuid.UUID]] = []
-
-    async def add_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
-        self.add_calls.append((user_id, book_id))
-        return self.add_results.pop(0)
-
-    async def remove_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
-        self.remove_calls.append((user_id, book_id))
-        return self.remove_results.pop(0)
+    async def unfavorite_book(self, user_id: uuid.UUID, book_id: uuid.UUID) -> None:
+        self.unfavorite_calls.append((user_id, book_id))
+        if not self.unfavorite_exists:
+            raise BookNotFoundError
 
 
 class FakeLogRepo:
@@ -365,125 +356,71 @@ async def test_get_books_passes_pagination_to_repository():
 
 
 @pytest.mark.asyncio
-async def test_favorite_book_logs_only_first_real_add():
+async def test_favorite_book_route_calls_service_with_current_user_id():
     current_user = make_user()
     book_id = uuid.uuid4()
-    book_repo = FakeEnsureExistsBookRepo()
-    favorite_repo = FakeFavoriteMutationRepo(add_results=[True, False])
-    log_repo = FakeLogRepo()
+    favorite_service = FakeFavoriteService()
 
-    first_result = await books_route.favorite_book(
+    result = await books_route.favorite_book(
         book_id=book_id,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
-        log_repo=log_repo,
-        current_user=current_user,
-    )
-    second_result = await books_route.favorite_book(
-        book_id=book_id,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
-        log_repo=log_repo,
+        favorite_service=favorite_service,
         current_user=current_user,
     )
 
-    assert first_result is None
-    assert second_result is None
-    assert book_repo.calls == [book_id, book_id]
-    assert favorite_repo.add_calls == [
-        (current_user.id, book_id),
-        (current_user.id, book_id),
-    ]
-    assert len(log_repo.entries) == 1
-    assert log_repo.entries[0].user_id == current_user.id
-    assert log_repo.entries[0].action == "favorite_book"
-    assert log_repo.entries[0].entity == "books"
-    assert log_repo.entries[0].entity_id == book_id
+    assert result is None
+    assert favorite_service.favorite_calls == [(current_user.id, book_id)]
 
 
 @pytest.mark.asyncio
-async def test_unfavorite_book_logs_only_first_real_remove():
+async def test_unfavorite_book_route_calls_service_with_current_user_id():
     current_user = make_user()
     book_id = uuid.uuid4()
-    book_repo = FakeEnsureExistsBookRepo()
-    favorite_repo = FakeFavoriteMutationRepo(remove_results=[True, False])
-    log_repo = FakeLogRepo()
+    favorite_service = FakeFavoriteService()
 
-    first_result = await books_route.unfavorite_book(
+    result = await books_route.unfavorite_book(
         book_id=book_id,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
-        log_repo=log_repo,
-        current_user=current_user,
-    )
-    second_result = await books_route.unfavorite_book(
-        book_id=book_id,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
-        log_repo=log_repo,
+        favorite_service=favorite_service,
         current_user=current_user,
     )
 
-    assert first_result is None
-    assert second_result is None
-    assert book_repo.calls == [book_id, book_id]
-    assert favorite_repo.remove_calls == [
-        (current_user.id, book_id),
-        (current_user.id, book_id),
-    ]
-    assert len(log_repo.entries) == 1
-    assert log_repo.entries[0].user_id == current_user.id
-    assert log_repo.entries[0].action == "unfavorite_book"
-    assert log_repo.entries[0].entity == "books"
-    assert log_repo.entries[0].entity_id == book_id
+    assert result is None
+    assert favorite_service.unfavorite_calls == [(current_user.id, book_id)]
 
 
 @pytest.mark.asyncio
 async def test_favorite_book_returns_404_when_book_missing():
     current_user = make_user()
     book_id = uuid.uuid4()
-    book_repo = FakeEnsureExistsBookRepo(exists=False)
-    favorite_repo = FakeFavoriteMutationRepo(add_results=[True])
-    log_repo = FakeLogRepo()
+    favorite_service = FakeFavoriteService(favorite_exists=False)
 
     with pytest.raises(HTTPException) as excinfo:
         await books_route.favorite_book(
             book_id=book_id,
-            book_repo=book_repo,
-            favorite_book_repo=favorite_repo,
-            log_repo=log_repo,
+            favorite_service=favorite_service,
             current_user=current_user,
         )
 
     assert excinfo.value.status_code == 404
     assert excinfo.value.detail == "Book not found"
-    assert book_repo.calls == [book_id]
-    assert favorite_repo.add_calls == []
-    assert log_repo.entries == []
+    assert favorite_service.favorite_calls == [(current_user.id, book_id)]
 
 
 @pytest.mark.asyncio
 async def test_unfavorite_book_returns_404_when_book_missing():
     current_user = make_user()
     book_id = uuid.uuid4()
-    book_repo = FakeEnsureExistsBookRepo(exists=False)
-    favorite_repo = FakeFavoriteMutationRepo(remove_results=[True])
-    log_repo = FakeLogRepo()
+    favorite_service = FakeFavoriteService(unfavorite_exists=False)
 
     with pytest.raises(HTTPException) as excinfo:
         await books_route.unfavorite_book(
             book_id=book_id,
-            book_repo=book_repo,
-            favorite_book_repo=favorite_repo,
-            log_repo=log_repo,
+            favorite_service=favorite_service,
             current_user=current_user,
         )
 
     assert excinfo.value.status_code == 404
     assert excinfo.value.detail == "Book not found"
-    assert book_repo.calls == [book_id]
-    assert favorite_repo.remove_calls == []
-    assert log_repo.entries == []
+    assert favorite_service.unfavorite_calls == [(current_user.id, book_id)]
 
 
 @pytest.mark.asyncio
