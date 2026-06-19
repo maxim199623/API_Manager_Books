@@ -49,36 +49,3 @@ def get_settings_manager(request: Request) -> SettingsManager:
     """Получаем settings_manager"""
     return request.app.state.settings_manager
 
-
-async def create_default_admin(db_manager: AsyncDBManager) -> None:
-    """
-    Создаёт администратора, если таблица users пуста.
-    """
-    async with db_manager.session() as session:
-        from src.DB.Repository.UserRepository.user_repository import UserRepository
-        from src.DB.Repository.UserRepository.Shems import UserCreate
-        from src.DB.Repository.UserRepository.Enums import UserRole
-        from src.DB.Repository.UserRepository.ORM import User
-
-        repo = UserRepository(session)
-
-        # Проверяем, есть ли уже пользователи
-        from sqlalchemy import select
-        result = await session.execute(select(User.id).limit(1))
-        exists = result.scalar_one_or_none()
-
-        if exists is not None:
-            return  # Юзеры есть — ничего не делаем
-
-        # хеш пароля
-        default_password_hash = "default"
-
-        admin = await repo.create_user(
-            UserCreate(
-                email="default@default.ru",
-                password=default_password_hash,
-                role=UserRole.ADMIN,
-            )
-        )
-        print(f"[INIT] Создан администратор: {admin.email}")
-

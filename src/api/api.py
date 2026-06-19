@@ -8,7 +8,7 @@ from src.core.config import SettingsManager
 
 from src.api import main_router
 
-from src.api.Dependencices import create_default_admin
+from src.bootstrap.admin import create_default_admin
 
 # --------- LIFESPAN: старт/остановка приложения ---------
 
