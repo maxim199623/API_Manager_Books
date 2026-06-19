@@ -5,32 +5,56 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
+from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserRead
 from src.api.route import book_chapters as books_route
 
 
-class FakeBookRepo:
-    def __init__(self, *, exists: bool = True):
-        self.exists = exists
-        self.calls: list[uuid.UUID] = []
-
-    async def ensure_exists(self, book_id: uuid.UUID):
-        self.calls.append(book_id)
-        if not self.exists:
-            raise BookNotFoundError
-        return SimpleNamespace(id=book_id, title="Stored book")
-
-
-class FakeChapterHeaderRepo:
-    def __init__(self, rows):
-        self.rows = rows
-        self.calls: list[uuid.UUID] = []
+class FakeChapterService:
+    def __init__(
+        self,
+        *,
+        headers=None,
+        count_result: tuple[uuid.UUID, int] | None = None,
+        chapter=None,
+        book_exists: bool = True,
+        chapter_exists: bool = True,
+    ):
+        self.headers = headers if headers is not None else []
+        self.count_result = count_result
+        self.chapter = chapter
+        self.book_exists = book_exists
+        self.chapter_exists = chapter_exists
+        self.header_calls: list[uuid.UUID] = []
+        self.count_calls: list[uuid.UUID] = []
+        self.get_calls: list[tuple[uuid.UUID, uuid.UUID, int]] = []
 
     async def list_chapter_headers(self, book_id: uuid.UUID):
-        self.calls.append(book_id)
-        return self.rows
+        self.header_calls.append(book_id)
+        if not self.book_exists:
+            raise BookNotFoundError
+        return self.headers
+
+    async def count_chapters(self, book_id: uuid.UUID) -> tuple[uuid.UUID, int]:
+        self.count_calls.append(book_id)
+        if not self.book_exists:
+            raise BookNotFoundError
+        if self.count_result is None:
+            return book_id, 0
+        return self.count_result
+
+    async def get_chapter(
+        self,
+        user_id: uuid.UUID,
+        book_id: uuid.UUID,
+        chapter_num: int,
+    ):
+        self.get_calls.append((user_id, book_id, chapter_num))
+        if not self.chapter_exists:
+            raise BookChapterNotFoundError
+        return self.chapter
 
 
 def make_user() -> UserRead:
@@ -43,31 +67,55 @@ def make_user() -> UserRead:
     )
 
 
-def get_chapter_collection_route():
+def get_route(path: str, method: str):
     return next(
         (
             route
             for route in books_route.router.routes
-            if route.path == "/books/{book_id}/chapters"
-            and "GET" in route.methods
+            if route.path == path and method in route.methods
         ),
         None,
     )
 
 
+def make_chapter(book_id: uuid.UUID, chapter_num: int = 3):
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        book_id=book_id,
+        chapter=chapter_num,
+        chapter_name="Finale",
+        description="Text",
+        file=None,
+        created_at=datetime.now(),
+    )
+
+
 def test_chapter_collection_route_is_registered_with_light_response_model():
-    route = get_chapter_collection_route()
+    route = get_route("/books/{book_id}/chapters", "GET")
 
     assert route is not None
     assert route.response_model.__args__[0].__name__ == "BookChapterListRead"
 
 
+def test_chapter_count_route_is_registered_with_count_response_model():
+    route = get_route("/books/{book_id}/chapters/count", "GET")
+
+    assert route is not None
+    assert route.response_model.__name__ == "ChaptersCountResponse"
+
+
+def test_single_chapter_route_is_registered_with_full_response_model():
+    route = get_route("/books/{book_id}/chapters/{chapter_num}", "GET")
+
+    assert route is not None
+    assert route.response_model.__name__ == "BookChapterRead"
+
+
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_light_chapter_headers():
     book_id = uuid.uuid4()
-    book_repo = FakeBookRepo()
-    chapter_repo = FakeChapterHeaderRepo(
-        [
+    service = FakeChapterService(
+        headers=[
             SimpleNamespace(chapter=1, chapter_name="Opening"),
             SimpleNamespace(chapter=2, chapter_name=None),
             SimpleNamespace(chapter=3, chapter_name="Finale"),
@@ -76,8 +124,7 @@ async def test_get_book_chapters_returns_light_chapter_headers():
 
     result = await books_route.get_book_chapters(
         book_id=book_id,
-        book_repo=book_repo,
-        chapter_repo=chapter_repo,
+        chapter_service=service,
         current_user=make_user(),
     )
 
@@ -86,45 +133,118 @@ async def test_get_book_chapters_returns_light_chapter_headers():
         {"chapter": 2, "chapter_name": None},
         {"chapter": 3, "chapter_name": "Finale"},
     ]
-    assert book_repo.calls == [book_id]
-    assert chapter_repo.calls == [book_id]
+    assert service.header_calls == [book_id]
 
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_empty_list_for_existing_book_without_chapters():
     book_id = uuid.uuid4()
-    book_repo = FakeBookRepo()
-    chapter_repo = FakeChapterHeaderRepo([])
+    service = FakeChapterService(headers=[])
 
     result = await books_route.get_book_chapters(
         book_id=book_id,
-        book_repo=book_repo,
-        chapter_repo=chapter_repo,
+        chapter_service=service,
         current_user=make_user(),
     )
 
     assert result == []
-    assert book_repo.calls == [book_id]
-    assert chapter_repo.calls == [book_id]
+    assert service.header_calls == [book_id]
 
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_404_when_book_is_missing():
     book_id = uuid.uuid4()
-    book_repo = FakeBookRepo(exists=False)
-    chapter_repo = FakeChapterHeaderRepo(
-        [SimpleNamespace(chapter=1, chapter_name="Hidden")]
+    service = FakeChapterService(
+        headers=[SimpleNamespace(chapter=1, chapter_name="Hidden")],
+        book_exists=False,
     )
 
     with pytest.raises(HTTPException) as excinfo:
         await books_route.get_book_chapters(
             book_id=book_id,
-            book_repo=book_repo,
-            chapter_repo=chapter_repo,
+            chapter_service=service,
             current_user=make_user(),
         )
 
     assert excinfo.value.status_code == 404
     assert excinfo.value.detail == "Book not found"
-    assert book_repo.calls == [book_id]
-    assert chapter_repo.calls == []
+    assert service.header_calls == [book_id]
+
+
+@pytest.mark.asyncio
+async def test_get_book_chapters_count_returns_count_response():
+    requested_book_id = uuid.uuid4()
+    existing_book_id = uuid.uuid4()
+    service = FakeChapterService(count_result=(existing_book_id, 6))
+
+    result = await books_route.get_book_chapters_count(
+        book_id=requested_book_id,
+        chapter_service=service,
+        current_user=make_user(),
+    )
+
+    assert result.model_dump() == {
+        "book_id": existing_book_id,
+        "chapters_count": 6,
+    }
+    assert service.count_calls == [requested_book_id]
+
+
+@pytest.mark.asyncio
+async def test_get_book_chapters_count_returns_404_when_book_is_missing():
+    book_id = uuid.uuid4()
+    service = FakeChapterService(book_exists=False)
+
+    with pytest.raises(HTTPException) as excinfo:
+        await books_route.get_book_chapters_count(
+            book_id=book_id,
+            chapter_service=service,
+            current_user=make_user(),
+        )
+
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.detail == "Book not found"
+    assert service.count_calls == [book_id]
+
+
+@pytest.mark.asyncio
+async def test_get_book_chapter_returns_full_chapter_response():
+    book_id = uuid.uuid4()
+    chapter_num = 4
+    user = make_user()
+    chapter = make_chapter(book_id=book_id, chapter_num=chapter_num)
+    service = FakeChapterService(chapter=chapter)
+
+    result = await books_route.get_book_chapter(
+        book_id=book_id,
+        chapter_num=chapter_num,
+        chapter_service=service,
+        current_user=user,
+    )
+
+    assert result.id == chapter.id
+    assert result.book_id == book_id
+    assert result.chapter == chapter_num
+    assert result.chapter_name == "Finale"
+    assert result.description == "Text"
+    assert service.get_calls == [(user.id, book_id, chapter_num)]
+
+
+@pytest.mark.asyncio
+async def test_get_book_chapter_returns_404_when_chapter_is_missing():
+    book_id = uuid.uuid4()
+    chapter_num = 5
+    user = make_user()
+    service = FakeChapterService(chapter_exists=False)
+
+    with pytest.raises(HTTPException) as excinfo:
+        await books_route.get_book_chapter(
+            book_id=book_id,
+            chapter_num=chapter_num,
+            chapter_service=service,
+            current_user=user,
+        )
+
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.detail == "Chapter not found"
+    assert service.get_calls == [(user.id, book_id, chapter_num)]

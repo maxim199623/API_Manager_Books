@@ -14,9 +14,15 @@ from src.DB.Repository.BookRepository.book_repository import BookNotFoundError, 
 from src.DB.Repository.LogRepository.Shems import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.Shems import UserRead
-from src.api.Dependencices import get_book_chapter_repo, get_book_repo, get_log_repo
+from src.api.Dependencices import (
+    get_book_chapter_repo,
+    get_book_repo,
+    get_chapter_service,
+    get_log_repo,
+)
 from src.api.Shems import ChaptersCountResponse
 from src.api.security.utils import require_admin, require_auth
+from src.application.services.chapter_service import ChapterService
 
 router = APIRouter(prefix="/books", tags=["book-chapters"])
 
@@ -82,22 +88,20 @@ async def add_book_chapters(
 )
 async def get_book_chapters(
     book_id: uuid.UUID,
-    book_repo: BookRepository = Depends(get_book_repo),
-    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
+    chapter_service: ChapterService = Depends(get_chapter_service),
     current_user: UserRead = Depends(require_auth),
 ):
     """
     Вернуть номера и названия глав книги в порядке номеров глав.
     """
     try:
-        book = await book_repo.ensure_exists(book_id)
+        chapters = await chapter_service.list_chapter_headers(book_id)
     except BookNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
         )
 
-    chapters = await chapter_repo.list_chapter_headers(book.id)
     return [
         BookChapterListRead.model_validate(chapter, from_attributes=True)
         for chapter in chapters
@@ -107,27 +111,22 @@ async def get_book_chapters(
 @router.get("/{book_id}/chapters/count",response_model=ChaptersCountResponse,status_code=status.HTTP_200_OK)
 async def get_book_chapters_count(
     book_id: uuid.UUID,
-    book_repo: BookRepository = Depends(get_book_repo),
-    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
-    current_user = Depends(require_auth),   # заменяй на require_admin при желании
+    chapter_service: ChapterService = Depends(get_chapter_service),
+    current_user: UserRead = Depends(require_auth),
 ):
     """
     Вернуть количество глав у книги с указанным ID.
     """
-
-    # Проверяем, что книга существует
     try:
-        book = await book_repo.ensure_exists(book_id)
+        existing_book_id, count = await chapter_service.count_chapters(book_id)
     except BookNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
         )
 
-    count = await chapter_repo.count_chapters(book.id)
-
     return ChaptersCountResponse(
-        book_id=book.id,
+        book_id=existing_book_id,
         chapters_count=count,
     )
 
@@ -173,15 +172,15 @@ async def update_book_chapter(
 async def get_book_chapter(
     book_id: uuid.UUID,
     chapter_num: int,
-    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
-    log_repo: LogRepository = Depends(get_log_repo),
-    current_user = Depends(require_auth),
+    chapter_service: ChapterService = Depends(get_chapter_service),
+    current_user: UserRead = Depends(require_auth),
 ):
     """
     Получить конкретную главу книги по (book_id, chapter_num).
     """
     try:
-        chapter = await chapter_repo.ensure_exists_by_book_and_number(
+        chapter = await chapter_service.get_chapter(
+            user_id=current_user.id,
             book_id=book_id,
             chapter_num=chapter_num,
         )
@@ -190,16 +189,6 @@ async def get_book_chapter(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Chapter not found",
         )
-
-    await log_repo.log_from_dto(
-        LogCreate(
-            user_id=current_user.id,
-            action="get_chapter",
-            entity="book_chapters",
-            entity_id=chapter.id,  # id записи главы
-            details=f"Пользователь запросил главу #{chapter_num} книги #{book_id}",
-        )
-    )
 
     # явная конвертация ORM -> Pydantic
 

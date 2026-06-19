@@ -9,6 +9,7 @@ from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.user_repository import UserRepository
 from src.api.security.jwt_tokens import create_access_token
 from src.api.websocket import manager as ws_manager
+from src.application.services.chapter_service import ChapterService
 from src.application.services.favorite_service import FavoriteService
 from src.application.services.user_service import UserService
 from src.core.config import SettingsManager
@@ -74,6 +75,19 @@ async def get_favorite_service(
 async def get_book_chapter_repo(session=Depends(get_session)) -> BookChapterRepository:
     """Получаем BookChapterRepository"""
     return BookChapterRepository(session)
+
+
+async def get_chapter_service(
+    book_repo: BookRepository = Depends(get_book_repo),
+    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
+    log_repo: LogRepository = Depends(get_log_repo),
+) -> ChapterService:
+    """Получаем ChapterService"""
+    return ChapterService(
+        book_repo=book_repo,
+        chapter_repo=chapter_repo,
+        log_repo=log_repo,
+    )
 
 def get_settings_manager(request: Request) -> SettingsManager:
     """Получаем settings_manager"""
