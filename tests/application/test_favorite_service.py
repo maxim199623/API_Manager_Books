@@ -101,6 +101,21 @@ async def test_unfavorite_book_logs_only_when_favorite_is_removed():
 
 
 @pytest.mark.asyncio
+async def test_unfavorite_book_does_not_log_when_favorite_does_not_exist():
+    user_id = uuid.uuid4()
+    book_id = uuid.uuid4()
+    log_repo = FakeLogRepo()
+    favorite_book_repo = FakeFavoriteBookRepo(remove_result=False)
+    service = FavoriteService(FakeBookRepo(), favorite_book_repo, log_repo)
+
+    result = await service.unfavorite_book(user_id, book_id)
+
+    assert result is None
+    assert favorite_book_repo.remove_calls == [(user_id, book_id)]
+    assert log_repo.entries == []
+
+
+@pytest.mark.asyncio
 async def test_book_not_found_error_is_propagated_without_favorite_or_log_calls():
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
