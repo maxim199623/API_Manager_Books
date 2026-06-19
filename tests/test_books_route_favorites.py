@@ -10,6 +10,7 @@ from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
 from starlette.datastructures import Headers
 
+from src.api.route import book_files as book_files_route
 from src.api.route import books as books_route
 from src.api.route.books import get_books
 from src.DB.Repository.BookRepository import Shems as book_shems
@@ -492,9 +493,9 @@ async def test_get_book_cover_streams_chunked_bytes_with_actual_mime(monkeypatch
         cover_chunks=[b"ab", b"cd", b"ef"],
     )
     factory = FakeBinaryRepositoryFactory(repo)
-    monkeypatch.setattr(books_route, "BookRepository", factory)
+    monkeypatch.setattr(book_files_route, "BookRepository", factory)
 
-    response = await books_route.get_book_cover(
+    response = await book_files_route.get_book_cover(
         book_id=uuid.uuid4(),
         db_manager=FakeDBManager(),
         current_user=make_user(),
@@ -518,9 +519,9 @@ async def test_get_book_file_streams_chunked_bytes_and_sets_filename(monkeypatch
         file_chunks=[b"Solo", b"Leve", b"ling"],
     )
     factory = FakeBinaryRepositoryFactory(repo)
-    monkeypatch.setattr(books_route, "BookRepository", factory)
+    monkeypatch.setattr(book_files_route, "BookRepository", factory)
 
-    response = await books_route.get_book_file(
+    response = await book_files_route.get_book_file(
         book_id=uuid.uuid4(),
         db_manager=FakeDBManager(),
         current_user=make_user(),
@@ -540,7 +541,7 @@ async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
     book_repo = FakeBookUpdateRepo()
     log_repo = FakeLogRepo()
 
-    result = await books_route.update_book_cover(
+    result = await book_files_route.update_book_cover(
         book_id=book_id,
         cover=make_upload("cover.webp", b"cover-bytes", "image/webp"),
         book_repo=book_repo,
@@ -569,7 +570,7 @@ async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
     log_repo = FakeLogRepo()
     payload = (b"a" * BOOK_BINARY_CHUNK_SIZE) + b"tail"
 
-    result = await books_route.update_book_file(
+    result = await book_files_route.update_book_file(
         book_id=book_id,
         file=make_upload("solo-leveling.epub", payload, "application/epub+zip"),
         book_repo=book_repo,
