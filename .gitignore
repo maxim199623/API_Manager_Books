@@ -114,7 +114,6 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -256,30 +255,27 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea
-/key.pem
-/cert.pem
-/app1.db
 /API_Manager_Books.7z
 /Dockerfile
 /Тест/cert.pem
 /Тест
-/Tests
-/Tests/
-/Tests/*.py
-/tests/
-/tests/*.py
 /src/api/security/cert/jwt_private.pem
 /src/api/security/cert/jwt_public.pem
-/app2.db
 /.worktrees/
 /docs/superpowers/plans/2026-05-22-favorite-books.md
 /docs/superpowers/specs/2026-05-22-favorite-books-design.md
-/.tmp_sqlite_root/manual.db
-/.tmp_sqlite_root/manual.db-journal
 /Тест/
-/output/pdf/api_client_contract_openapi_like.pdf
-/output/pdf/api_manager_books.openapi.json
-/output/pdf/api_manager_books.openapi-like.yaml
-/tmp/pdfs/generate_api_client_contract_pdf.py
-/app.db
 /docs/superpowers/plans/2026-06-01-book-list-sorting.md
+
+# Runtime files
+/var/*
+!/var/.gitkeep
+/artifacts/*
+!/artifacts/.gitkeep
+/tmp/
+/.tmp_*/
+/output/
+/app*.db
+/cert.pem
+/key.pem
+/config.ini
