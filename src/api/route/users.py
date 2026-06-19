@@ -11,7 +11,7 @@ from src.api.Shems import AuthRequest, TokenResponse
 from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
 from src.api.Dependencices import get_user_repo, get_log_repo
 from src.api.security.jwt_tokens import create_access_token
-from src.api.security.passwords import verify_password
+from src.security.passwords import verify_password
 from src.api.security.utils import require_admin, require_auth
 from src.api.websocket import manager as ws_manager
 

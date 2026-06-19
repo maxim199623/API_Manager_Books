@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.DB.Repository.UserRepository.ORM import User
 from src.DB.Repository.UserRepository.Shems import UserRole
 from src.DB.Repository.UserRepository.Shems import UserCreate
-from src.api.security.passwords import hash_password
+from src.security.passwords import hash_password
 
 class EmailAlreadyExistsError(Exception):
     pass
