@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserRead
-from src.api.route import books as books_route
+from src.api.route import book_chapters as books_route
 
 
 class FakeBookRepo:
