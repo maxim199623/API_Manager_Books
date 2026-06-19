@@ -7,6 +7,9 @@ from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.user_repository import UserRepository
+from src.api.security.jwt_tokens import create_access_token
+from src.api.websocket import manager as ws_manager
+from src.application.services.user_service import UserService
 from src.core.config import SettingsManager
 
 
@@ -29,6 +32,19 @@ async def get_user_repo(session=Depends(get_session)) -> UserRepository:
 async def get_log_repo(session=Depends(get_session)) -> LogRepository:
     """Получаем LogRepository"""
     return LogRepository(session)
+
+
+async def get_user_service(
+    user_repo: UserRepository = Depends(get_user_repo),
+    log_repo: LogRepository = Depends(get_log_repo),
+) -> UserService:
+    """Получаем UserService"""
+    return UserService(
+        user_repo=user_repo,
+        log_repo=log_repo,
+        token_factory=create_access_token,
+        notification_manager=ws_manager,
+    )
 
 
 async def get_book_repo(session=Depends(get_session)) -> BookRepository:
