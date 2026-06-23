@@ -1,13 +1,9 @@
-from typing import AsyncIterator
 import uuid
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.exc import IntegrityError
 
-from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
-from src.DB.Manager.manager import AsyncDBManager
-from src.DB.base import Base
 from src.schemas.books import BookCreate
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
@@ -18,60 +14,19 @@ from src.DB.Repository.UserRepository.user_repository import UserRepository
 pytestmark = pytest.mark.asyncio
 
 
-@pytest_asyncio.fixture(params=["sqlite", "postgres"], scope="function")
-async def async_db_manager(
-    request: pytest.FixtureRequest,
-) -> AsyncIterator[AsyncDBManager]:
-    backend = request.param
-
-    settings = DatabaseSettings(
-        backend=backend,
-        echo=False,
-        sqlite=SQLiteSettings(path=":memory:"),
-        postgres=PostgresSettings(
-            host="localhost",
-            port=5432,
-            user="admin",
-            password="admin",
-            name="test_db",
-        ),
-    )
-
-    db_manager = AsyncDBManager(settings, Base)
-
-    ok = await db_manager.ping()
-    if not ok:
-        await db_manager.dispose()
-        pytest.skip(f"{backend} is not available, skipping tests for this backend")
-
-    await db_manager.create_schema()
-
-    try:
-        yield db_manager
-    finally:
-        await db_manager.drop_schema()
-        await db_manager.dispose()
+@pytest_asyncio.fixture
+async def user_repo(repository_memory_session) -> UserRepository:
+    return UserRepository(repository_memory_session)
 
 
 @pytest_asyncio.fixture
-async def session(async_db_manager: AsyncDBManager):
-    async with async_db_manager.session() as s:
-        yield s
+async def book_repo(repository_memory_session) -> BookRepository:
+    return BookRepository(repository_memory_session)
 
 
 @pytest_asyncio.fixture
-async def user_repo(session) -> UserRepository:
-    return UserRepository(session)
-
-
-@pytest_asyncio.fixture
-async def book_repo(session) -> BookRepository:
-    return BookRepository(session)
-
-
-@pytest_asyncio.fixture
-async def favorite_repo(session) -> FavoriteBookRepository:
-    return FavoriteBookRepository(session)
+async def favorite_repo(repository_memory_session) -> FavoriteBookRepository:
+    return FavoriteBookRepository(repository_memory_session)
 
 
 class TestFavoriteBookRepository:
@@ -172,11 +127,11 @@ class TestFavoriteBookRepository:
     async def test_add_favorite_does_not_swallow_foreign_key_errors(
         self,
         favorite_repo: FavoriteBookRepository,
-        session,
+        repository_memory_session,
     ):
         with pytest.raises(IntegrityError):
             await favorite_repo.add_favorite(uuid.uuid4(), uuid.uuid4())
-        await session.rollback()
+        await repository_memory_session.rollback()
 
     async def test_list_favorite_book_ids_returns_subset(
         self,

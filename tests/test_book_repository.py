@@ -1,96 +1,16 @@
-from pathlib import Path
-from typing import AsyncIterator
-
 import pytest
 import pytest_asyncio
-
-from src.core.config import SettingsManager
-from src.DB.Manager.manager import AsyncDBManager
-from src.DB.base import Base
 
 from src.DB.Repository.BookRepository.book_repository import BookRepository, BookNotFoundError
 from src.schemas.books import BookCreate, BookUpdate
 
 pytestmark = pytest.mark.asyncio
 
-# ---------- Фикстуры конфигурации ----------
-
-@pytest.fixture
-def config_path(tmp_path: Path) -> Path:
-    """Путь к временному config.ini для этого набора тестов."""
-    return tmp_path / "config.ini"
-
-
-@pytest.fixture
-def settings_manager(config_path: Path, tmp_path: Path) -> SettingsManager:
-    """
-    SettingsManager, который:
-    - создаёт config.ini, если его нет;
-    - выставляет sqlite на временный файл;
-    """
-    manager = SettingsManager(config_path)
-
-    # отдельная sqlite-бд для тестов
-    db_file = tmp_path / "test_books_repo.db"
-    manager.set_sqlite_path(str(db_file))
-    manager.set_echo(False)
-    manager.postgres.user = "admin"
-    manager.postgres.password = "admin"
-    manager.postgres.name = "test_db"
-    manager.save()
-
-    return manager
-
-
-# ---------- Фикстура AsyncDBManager с параметром backend ----------
-
-@pytest_asyncio.fixture(params=["sqlite", "postgres"], scope="function")
-async def async_db_manager(
-    request: pytest.FixtureRequest,
-    settings_manager: SettingsManager,
-) -> AsyncIterator[AsyncDBManager]:
-    """
-    Создаёт AsyncDBManager для sqlite и postgres.
-    Для postgres, если ping() не проходит — скипает тесты для этого backend.
-    """
-    backend = request.param
-
-    # переключаем backend
-    settings_manager.set_backend(backend)
-    settings_manager.save()
-
-    db_manager = AsyncDBManager(settings_manager.db, Base)
-
-    # проверяем доступность
-    ok = await db_manager.ping()
-    if not ok:
-        await db_manager.dispose()
-        pytest.skip(f"{backend} is not available, skipping tests for this backend")
-
-    # создаём схему (books и остальные модели, если есть)
-    await db_manager.create_schema()
-
-    try:
-        yield db_manager
-    finally:
-        # можно подчистить схему после тестов
-        await db_manager.drop_schema()
-        await db_manager.dispose()
-
-
-# ---------- Фикстура сессии ----------
-
-@pytest_asyncio.fixture
-async def session(async_db_manager: AsyncDBManager):
-    async with async_db_manager.session() as s:
-        yield s
-
-
 # ---------- Фикстура репозитория ----------
 
 @pytest_asyncio.fixture
-async def book_repo(session) -> BookRepository:
-    return BookRepository(session)
+async def book_repo(repository_session) -> BookRepository:
+    return BookRepository(repository_session)
 
 
 # ---------- ТЕСТЫ ДЛЯ BookRepository ----------
@@ -252,7 +172,7 @@ class TestBookRepository:
     async def test_list_books_sorts_by_created_at(
         self,
         book_repo: BookRepository,
-        session,
+        repository_session,
     ):
         older = await book_repo.create_book(
             BookCreate(
@@ -282,7 +202,7 @@ class TestBookRepository:
         base_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
         older.created_at = base_time
         newer.created_at = base_time + timedelta(days=1)
-        await session.flush()
+        await repository_session.flush()
 
         asc_books = await book_repo.list_books(sort_by="created_at", sort_dir="asc")
         desc_books = await book_repo.list_books(sort_by="created_at", sort_dir="desc")
@@ -293,7 +213,7 @@ class TestBookRepository:
     async def test_list_books_sorts_by_user_progress(
         self,
         book_repo: BookRepository,
-        session,
+        repository_session,
     ):
         from src.DB.Repository.BookChapterRepository.ORM import BookChapter
         from src.DB.Repository.LogRepository.ORM import LogEntry
@@ -310,8 +230,8 @@ class TestBookRepository:
             password_hash=b"hash",
             role=UserRole.USER,
         )
-        session.add_all([user, other_user])
-        await session.flush()
+        repository_session.add_all([user, other_user])
+        await repository_session.flush()
 
         books = {}
         for title in ["Low Progress", "Mid Progress", "High Progress", "No Chapters"]:
@@ -338,11 +258,11 @@ class TestBookRepository:
                     description=f"{title} chapter {chapter_num}",
                     file=None,
                 )
-                session.add(chapter)
+                repository_session.add(chapter)
                 chapters_by_title[title].append(chapter)
-        await session.flush()
+        await repository_session.flush()
 
-        session.add_all(
+        repository_session.add_all(
             [
                 LogEntry(
                     user_id=user.id,
@@ -394,7 +314,7 @@ class TestBookRepository:
                 ),
             ]
         )
-        await session.flush()
+        await repository_session.flush()
 
         desc_books = await book_repo.list_books(
             sort_by="progress",

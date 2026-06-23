@@ -1,14 +1,8 @@
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import AsyncIterator
 import uuid
 
 import pytest
 import pytest_asyncio
-
-from src.core.config import SettingsManager
-from src.DB.Manager.manager import AsyncDBManager
-from src.DB.base import Base
 
 from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
@@ -19,74 +13,9 @@ from src.DB.Repository.LogRepository.log_repository import LogRepository
 pytestmark = pytest.mark.asyncio
 
 
-# ---------- ФИКСТУРЫ ДЛЯ НАСТРОЕК И МЕНЕДЖЕРА БД ----------
-
-@pytest.fixture
-def config_path(tmp_path: Path) -> Path:
-    return tmp_path / "config_logs.ini"
-
-
-@pytest.fixture
-def settings_manager(config_path: Path, tmp_path: Path) -> SettingsManager:
-    """
-    SettingsManager:
-    - создаёт config.ini, если его нет;
-    - указывает отдельный sqlite-файл для тестов логов.
-    """
-    manager = SettingsManager(config_path)
-
-    db_file = tmp_path / "test_logs_repo.db"
-    manager.set_sqlite_path(str(db_file))
-    manager.set_echo(False)
-    manager.postgres.user = "admin"
-    manager.postgres.password = "admin"
-    manager.postgres.name = "test_db"
-    manager.save()
-
-    return manager
-
-
-@pytest_asyncio.fixture(params=["sqlite", "postgres"], scope="function")
-async def async_db_manager(
-    request: pytest.FixtureRequest,
-    settings_manager: SettingsManager,
-) -> AsyncIterator[AsyncDBManager]:
-    """
-    AsyncDBManager и для sqlite, и для postgres.
-    Если postgres недоступен, тесты для него будут пропущены.
-    """
-    backend = request.param
-
-    settings_manager.set_backend(backend)
-    settings_manager.save()
-
-    db_manager = AsyncDBManager(settings_manager.db, Base)
-
-    # Проверяем доступность БД
-    ok = await db_manager.ping()
-    if not ok:
-        await db_manager.dispose()
-        pytest.skip(f"{backend} is not available, skipping tests for this backend")
-
-    # Создаём схему (db_logs и остальные таблицы)
-    await db_manager.create_schema()
-
-    try:
-        yield db_manager
-    finally:
-        await db_manager.drop_schema()
-        await db_manager.dispose()
-
-
 @pytest_asyncio.fixture
-async def session(async_db_manager: AsyncDBManager):
-    async with async_db_manager.session() as s:
-        yield s
-
-
-@pytest_asyncio.fixture
-async def log_repo(session) -> LogRepository:
-    return LogRepository(session)
+async def log_repo(repository_session) -> LogRepository:
+    return LogRepository(repository_session)
 
 
 # ---------- ТЕСТЫ ДЛЯ LogRepository ----------

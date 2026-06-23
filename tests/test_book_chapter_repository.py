@@ -1,12 +1,5 @@
-from pathlib import Path
-from typing import AsyncIterator
-
 import pytest
 import pytest_asyncio
-
-from src.core.config import SettingsManager
-from src.DB.Manager.manager import AsyncDBManager
-from src.DB.base import Base
 
 from src.DB.Repository.BookRepository.ORM import Book
 
@@ -19,84 +12,14 @@ from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 pytestmark = pytest.mark.asyncio
 
 
-# ---------- Фикстуры конфигурации ----------
-
-@pytest.fixture
-def config_path(tmp_path: Path) -> Path:
-    return tmp_path / "config_chapters.ini"
-
-
-@pytest.fixture
-def settings_manager(config_path: Path, tmp_path: Path) -> SettingsManager:
-    """
-    SettingsManager:
-    - создаёт config.ini, если его нет;
-    - указывает отдельный sqlite-файл для тестов.
-    """
-    manager = SettingsManager(config_path)
-
-    db_file = tmp_path / "test_chapters_repo.db"
-    manager.set_sqlite_path(str(db_file))
-    manager.set_echo(False)
-    manager.postgres.user = "admin"
-    manager.postgres.password = "admin"
-    manager.postgres.name = "test_db"
-    manager.save()
-
-    return manager
-
-
-# ---------- Фикстура AsyncDBManager c backend=["sqlite", "postgres"] ----------
-
-@pytest_asyncio.fixture(params=["sqlite", "postgres"], scope="function")
-async def async_db_manager(
-    request: pytest.FixtureRequest,
-    settings_manager: SettingsManager,
-) -> AsyncIterator[AsyncDBManager]:
-    """
-    Создаёт AsyncDBManager для sqlite и postgres.
-    Если postgres недоступен, тесты для него будут пропущены.
-    """
-    backend = request.param
-
-    # переключаем backend
-    settings_manager.set_backend(backend)
-    settings_manager.save()
-
-    db_manager = AsyncDBManager(settings_manager.db, Base)
-
-    # проверяем доступность БД
-    ok = await db_manager.ping()
-    if not ok:
-        await db_manager.dispose()
-        pytest.skip(f"{backend} is not available, skipping tests for this backend")
-
-    # создаём схему (books + book_chapters)
-    await db_manager.create_schema()
-
-    try:
-        yield db_manager
-    finally:
-        await db_manager.drop_schema()
-        await db_manager.dispose()
-
-
-# ---------- Сессия и репозитории ----------
-
 @pytest_asyncio.fixture
-async def session(async_db_manager: AsyncDBManager):
-    async with async_db_manager.session() as s:
-        yield s
+async def book_repo(repository_session) -> BookRepository:
+    return BookRepository(repository_session)
 
 
 @pytest_asyncio.fixture
-async def book_repo(session) -> BookRepository:
-    return BookRepository(session)
-
-
-@pytest_asyncio.fixture
-async def chapter_repo(session) -> BookChapterRepository:
-    return BookChapterRepository(session)
+async def chapter_repo(repository_session) -> BookChapterRepository:
+    return BookChapterRepository(repository_session)
 
 
 # ---------- Хелпер: создать книгу для теста ----------
@@ -277,7 +200,7 @@ class TestBookChapterRepository:
 
     async def test_cascade_delete_when_book_deleted(
         self,
-        session,
+        repository_session,
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
@@ -307,7 +230,7 @@ class TestBookChapterRepository:
         count_after = await chapter_repo.count_chapters(book.id)
 
         # определяем backend через URL движка
-        engine = session.bind  # AsyncEngine
+        engine = repository_session.bind  # AsyncEngine
         backend_name = engine.url.get_backend_name()  # 'sqlite' или 'postgresql'
 
         if backend_name.startswith("postgres"):
