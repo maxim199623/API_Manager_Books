@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+# Импорт регистрирует ORM-модели в metadata SQLAlchemy.
+import src.DB.models  # noqa: F401
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
 from src.core.config import SettingsManager
