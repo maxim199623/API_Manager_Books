@@ -2,14 +2,64 @@ import uuid
 from typing import Any, Callable, Protocol, Sequence
 
 from src.schemas.logs import LogCreate
-from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.schemas.enums import UserRole
 from src.schemas.users import UserCreate, UserRead, UserUpdate
-from src.DB.Repository.UserRepository.user_repository import (
-    UserNotFoundError as RepositoryUserNotFoundError,
-    UserRepository,
-)
 from src.security.passwords import verify_password
+
+
+class UserRecord(Protocol):
+    id: uuid.UUID
+    email: str
+    password_hash: bytes
+    role: UserRole
+    session: uuid.UUID | None
+
+
+class UserStorage(Protocol):
+    async def get_by_email(self, email: str) -> UserRecord | None:
+        ...
+
+    async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None) -> None:
+        ...
+
+    async def create_user(self, data: UserCreate) -> UserRecord:
+        ...
+
+    async def delete_user(self, user_id: uuid.UUID) -> bool:
+        ...
+
+    async def list_users(self) -> Sequence[object]:
+        ...
+
+    async def ensure_exists(self, user_id: uuid.UUID) -> UserRecord:
+        ...
+
+    async def update_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        email: str | None = None,
+        password: str | None = None,
+        role: UserRole | None = None,
+    ) -> UserRecord | None:
+        ...
+
+
+class LogWriter(Protocol):
+    async def log_from_dto(self, payload: LogCreate) -> Any:
+        ...
+
+    async def log_action(
+        self,
+        *,
+        user_id: uuid.UUID | None,
+        action: str,
+        entity: str | None = None,
+        entity_id: uuid.UUID | None = None,
+        details: str | None = None,
+        **extra_fields: Any,
+    ) -> Any:
+        ...
 
 
 class NotificationManager(Protocol):
@@ -39,13 +89,17 @@ class UserNotFoundInServiceError(Exception):
     """Пользователь не найден в пользовательском сценарии."""
 
 
+def _is_user_not_found_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "UserNotFoundError"
+
+
 class UserService:
     """Сервис пользовательских сценариев без привязки к HTTP-слою."""
 
     def __init__(
         self,
-        user_repo: UserRepository,
-        log_repo: LogRepository,
+        user_repo: UserStorage,
+        log_repo: LogWriter,
         token_factory: Callable[[dict[str, Any]], str],
         notification_manager: NotificationManager,
     ):
@@ -159,8 +213,10 @@ class UserService:
                 role=payload.role,
                 email=payload.email,
             )
-        except RepositoryUserNotFoundError as exc:
-            raise UserNotFoundInServiceError from exc
+        except Exception as exc:
+            if _is_user_not_found_error(exc):
+                raise UserNotFoundInServiceError from exc
+            raise
 
         if update_user is None:
             raise UserUpdateFailedError
