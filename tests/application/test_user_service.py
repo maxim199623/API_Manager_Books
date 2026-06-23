@@ -1,7 +1,11 @@
 import uuid
+from datetime import datetime
 
 import pytest
 
+from src.DB.Repository.UserRepository.Shems import UserRead, UserUpdate
+from src.DB.Repository.UserRepository.user_repository import UserNotFoundError as RepositoryUserNotFoundError
+from src.application.services import user_service as user_service_module
 from src.application.services.user_service import UserService
 
 
@@ -41,3 +45,27 @@ async def test_logout_closes_current_session():
 
     assert result is None
     assert user_repo.session_calls == [(user_id, None)]
+
+
+class UserRepoWithMissingUser:
+    async def ensure_exists(self, user_id: uuid.UUID):
+        raise RepositoryUserNotFoundError(f"User #{user_id} not found")
+
+
+@pytest.mark.asyncio
+async def test_update_user_converts_repository_not_found_to_service_error():
+    service = UserService(
+        user_repo=UserRepoWithMissingUser(),
+        log_repo=FakeLogRepo(),
+        token_factory=fake_token_factory,
+        notification_manager=FakeNotificationManager(),
+    )
+    current_user = UserRead(
+        id=uuid.uuid4(),
+        email="admin@example.com",
+        role="admin",
+        created_at=datetime.now(),
+    )
+
+    with pytest.raises(user_service_module.UserNotFoundInServiceError):
+        await service.update_user(uuid.uuid4(), UserUpdate(email="missing@example.com"), current_user)

@@ -5,7 +5,10 @@ from src.DB.Repository.LogRepository.Shems import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
-from src.DB.Repository.UserRepository.user_repository import UserRepository
+from src.DB.Repository.UserRepository.user_repository import (
+    UserNotFoundError as RepositoryUserNotFoundError,
+    UserRepository,
+)
 from src.security.passwords import verify_password
 
 
@@ -30,6 +33,10 @@ class FirstUserMustBeAdminError(Exception):
 
 class UserUpdateFailedError(Exception):
     """Репозиторий не вернул обновленного пользователя."""
+
+
+class UserNotFoundInServiceError(Exception):
+    """Пользователь не найден в пользовательском сценарии."""
 
 
 class UserService:
@@ -144,13 +151,17 @@ class UserService:
         current_user: UserRead,
     ) -> None:
         """Обновить пользователя по текущим правилам HTTP-маршрута."""
-        await self._user_repo.ensure_exists(user_id)
-        update_user = await self._user_repo.update_user(
-            user_id=user_id,
-            password=payload.password,
-            role=payload.role,
-            email=payload.email,
-        )
+        try:
+            await self._user_repo.ensure_exists(user_id)
+            update_user = await self._user_repo.update_user(
+                user_id=user_id,
+                password=payload.password,
+                role=payload.role,
+                email=payload.email,
+            )
+        except RepositoryUserNotFoundError as exc:
+            raise UserNotFoundInServiceError from exc
+
         if update_user is None:
             raise UserUpdateFailedError
 

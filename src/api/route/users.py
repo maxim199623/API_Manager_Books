@@ -1,7 +1,6 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.DB.Repository.UserRepository.user_repository import UserNotFoundError
 
 from src.api.Shems import AuthRequest, TokenResponse
 from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
@@ -11,6 +10,7 @@ from src.application.services.user_service import (
     FirstUserMustBeAdminError,
     InvalidCredentialsError,
     UserAlreadyExistsError,
+    UserNotFoundInServiceError,
     UserService,
     UserUpdateFailedError,
 )
@@ -98,7 +98,7 @@ async def patch_user(
     """Обновление пользователя"""
     try:
         await user_service.update_user(user_id, payload, current_user)
-    except UserNotFoundError:
+    except UserNotFoundInServiceError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
