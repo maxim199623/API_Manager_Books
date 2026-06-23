@@ -56,6 +56,16 @@ def test_legacy_shems_modules_are_removed() -> None:
     assert existing_modules == []
 
 
+def test_legacy_user_role_enums_module_is_removed() -> None:
+    importlib.invalidate_caches()
+
+    project_root = Path(__file__).resolve().parents[1]
+    legacy_file = project_root / "src" / "DB" / "Repository" / "UserRepository" / "Enums.py"
+
+    assert not legacy_file.exists()
+    assert importlib.util.find_spec(LEGACY_USER_ROLE_MODULE) is None
+
+
 def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
     project_root = Path(__file__).resolve().parents[1]
     scan_roots = (project_root / "src", project_root / "tests")
