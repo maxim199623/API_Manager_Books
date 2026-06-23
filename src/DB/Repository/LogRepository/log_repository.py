@@ -12,6 +12,12 @@ from src.DB.Repository.LogRepository.Shems import LogCreate
 
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
 
+
+def _validate_uuid_or_none(value: uuid.UUID | None, field_name: str) -> None:
+    if value is not None and not isinstance(value, uuid.UUID):
+        raise TypeError(f"{field_name} должен быть UUID или None")
+
+
 class LogRepository:
     """
     Репозиторий для работы с логами БД (db_logs).
@@ -46,6 +52,9 @@ class LogRepository:
                 details="Создана новая книга",
             )
         """
+        _validate_uuid_or_none(user_id, "user_id")
+        _validate_uuid_or_none(entity_id, "entity_id")
+
         payload: dict[str, Any] = {
             "user_id": user_id,
             "action": action,

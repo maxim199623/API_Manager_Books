@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import AsyncIterator
+import uuid
 
 import pytest
 import pytest_asyncio
@@ -93,19 +94,20 @@ async def log_repo(session) -> LogRepository:
 class TestLogRepository:
 
     async def test_log_action_and_get_by_id(self, log_repo: LogRepository):
+        entity_id = uuid.uuid4()
         entry = await log_repo.log_action(
             user_id=None,
             action="create",
             entity="books",
-            entity_id=42,
-            details="Создана книга #42",
+            entity_id=entity_id,
+            details=f"Создана книга #{entity_id}",
         )
 
         assert entry.id is not None
         assert entry.action == "create"
         assert entry.entity == "books"
-        assert entry.entity_id == 42
-        assert entry.details == "Создана книга #42"
+        assert entry.entity_id == entity_id
+        assert entry.details == f"Создана книга #{entity_id}"
         assert entry.created_at is not None
 
         fetched = await log_repo.get_by_id(entry.id)
@@ -113,50 +115,79 @@ class TestLogRepository:
         assert fetched.id == entry.id
         assert fetched.action == "create"
 
+    async def test_log_action_rejects_non_uuid_entity_id_without_breaking_session(
+        self,
+        log_repo: LogRepository,
+    ):
+        with pytest.raises(TypeError, match="entity_id"):
+            await log_repo.log_action(
+                user_id=None,
+                action="create",
+                entity="books",
+                entity_id=42,
+                details="Некорректный идентификатор сущности",
+            )
+
+        valid_entity_id = uuid.uuid4()
+        entry = await log_repo.log_action(
+            user_id=None,
+            action="create",
+            entity="books",
+            entity_id=valid_entity_id,
+            details="Сессия пригодна после ошибки валидации",
+        )
+
+        assert entry.entity_id == valid_entity_id
+
     async def test_log_from_dto(self, log_repo: LogRepository):
+        entity_id = uuid.uuid4()
         data = LogCreate(
             user_id=None,
             action="update",
             entity="users",
-            entity_id=7,
-            details="Изменён пользователь #7",
+            entity_id=entity_id,
+            details=f"Изменён пользователь #{entity_id}",
         )
 
         entry = await log_repo.log_from_dto(data)
         assert entry.id is not None
         assert entry.action == "update"
         assert entry.entity == "users"
-        assert entry.entity_id == 7
-        assert entry.details == "Изменён пользователь #7"
+        assert entry.entity_id == entity_id
+        assert entry.details == f"Изменён пользователь #{entity_id}"
 
     async def test_list_logs_with_filters(self, log_repo: LogRepository):
+        book_1_id = uuid.uuid4()
+        book_2_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+
         # создаём несколько логов разных типов
         await log_repo.log_action(
             user_id=None,
             action="create",
             entity="books",
-            entity_id=1,
+            entity_id=book_1_id,
             details="create book 1",
         )
         await log_repo.log_action(
             user_id=None,
             action="update",
             entity="books",
-            entity_id=1,
+            entity_id=book_1_id,
             details="update book 1",
         )
         await log_repo.log_action(
             user_id=None,
             action="delete",
             entity="books",
-            entity_id=2,
+            entity_id=book_2_id,
             details="delete book 2",
         )
         await log_repo.log_action(
             user_id=None,
             action="create",
             entity="users",
-            entity_id=5,
+            entity_id=user_id,
             details="create user 5",
         )
 
@@ -175,29 +206,31 @@ class TestLogRepository:
         assert len(books_logs) == 3
 
         # фильтр по entity_id
-        book1_logs = await log_repo.list_logs(entity="books", entity_id=1)
+        book1_logs = await log_repo.list_logs(entity="books", entity_id=book_1_id)
         assert len(book1_logs) == 2
         assert {l.action for l in book1_logs} == {"create", "update"}
 
     async def test_list_logs_time_range(self, log_repo: LogRepository):
+        entity_id = uuid.uuid4()
+
         # создаём логи
         e1 = await log_repo.log_action(
             user_id=None,
             action="create",
             entity="books",
-            entity_id=10,
+            entity_id=entity_id,
             details="log 1",
         )
         e2 = await log_repo.log_action(
             user_id=None,
             action="update",
             entity="books",
-            entity_id=10,
+            entity_id=entity_id,
             details="log 2",
         )
 
         # берём реальные created_at из БД
-        all_logs = await log_repo.list_logs(entity="books", entity_id=10)
+        all_logs = await log_repo.list_logs(entity="books", entity_id=entity_id)
         assert len(all_logs) >= 2
 
         oldest = min(l.created_at for l in all_logs)
@@ -231,7 +264,7 @@ class TestLogRepository:
                 user_id=None,
                 action="create",
                 entity="books",
-                entity_id=i,
+                entity_id=uuid.uuid4(),
                 details=f"log {i}",
             )
 
