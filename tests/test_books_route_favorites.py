@@ -14,6 +14,7 @@ from src.api.route import book_files as book_files_route
 from src.api.route import books as books_route
 from src.api.route.books import get_books
 from src.DB.Repository.BookRepository import Shems as book_shems
+from src.DB.Repository.BookRepository.Shems import BookListRead
 from src.DB.Repository.BookRepository.book_repository import (
     BOOK_BINARY_CHUNK_SIZE,
     BookNotFoundError,
@@ -78,6 +79,36 @@ class FakeFavoriteBookRepo:
     ) -> set[uuid.UUID]:
         self.calls.append((user_id, book_ids))
         return self.favorite_ids
+
+
+class FakeBookService:
+    def __init__(self, books=None):
+        self.books = books or []
+        self.list_calls: list[dict[str, object]] = []
+
+    async def list_books(
+        self,
+        *,
+        user_id: uuid.UUID,
+        author: str | None,
+        series: str | None,
+        offset: int,
+        limit: int,
+        sort_by: str,
+        sort_dir: str,
+    ):
+        self.list_calls.append(
+            {
+                "user_id": user_id,
+                "author": author,
+                "series": series,
+                "offset": offset,
+                "limit": limit,
+                "sort_by": sort_by,
+                "sort_dir": sort_dir,
+            }
+        )
+        return self.books
 
 
 class FakeFavoriteService:
@@ -236,63 +267,63 @@ async def test_get_books_marks_favorites_in_response():
     current_user = make_user()
     favorite_book = make_book("Favorite Book", author="Author A", series="Series A")
     regular_book = make_book("Regular Book", author="Author B", series="Series B")
-    book_repo = FakeBookRepo([favorite_book, regular_book])
-    favorite_repo = FakeFavoriteBookRepo({favorite_book.id})
+    books = [
+        BookListRead.model_validate(favorite_book, from_attributes=True).model_copy(
+            update={"is_favorite": True}
+        ),
+        BookListRead.model_validate(regular_book, from_attributes=True),
+    ]
+    book_service = FakeBookService(books)
 
     result = await get_books(
         author=None,
         series=None,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
+        book_service=book_service,
         current_user=current_user,
     )
 
     assert [book.is_favorite for book in result] == [True, False]
     assert [book.id for book in result] == [favorite_book.id, regular_book.id]
-    assert favorite_repo.calls == [(current_user.id, [favorite_book.id, regular_book.id])]
+    assert book_service.list_calls[0]["user_id"] == current_user.id
 
 
 @pytest.mark.asyncio
 async def test_get_books_returns_empty_list_without_favorite_lookup():
     current_user = make_user()
-    book_repo = FakeBookRepo([])
-    favorite_repo = FakeFavoriteBookRepo(set())
+    book_service = FakeBookService([])
 
     result = await get_books(
         author=None,
         series=None,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
+        book_service=book_service,
         current_user=current_user,
     )
 
     assert result == []
-    assert favorite_repo.calls == []
+    assert len(book_service.list_calls) == 1
 
 
 @pytest.mark.asyncio
 async def test_get_books_passes_author_and_series_filters_to_repository():
     current_user = make_user()
-    book_repo = FakeBookRepo([])
-    favorite_repo = FakeFavoriteBookRepo(set())
+    book_service = FakeBookService([])
 
     await get_books(
         author="Arkady Strugatsky",
         series="Noon Universe",
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
+        book_service=book_service,
         current_user=current_user,
     )
 
-    assert book_repo.calls == [
+    assert book_service.list_calls == [
         {
+            "user_id": current_user.id,
             "author": "Arkady Strugatsky",
             "series": "Noon Universe",
             "offset": 0,
             "limit": 100,
             "sort_by": "created_at",
             "sort_dir": "desc",
-            "user_id": current_user.id,
         }
     ]
 
@@ -300,28 +331,26 @@ async def test_get_books_passes_author_and_series_filters_to_repository():
 @pytest.mark.asyncio
 async def test_get_books_passes_sorting_to_repository():
     current_user = make_user()
-    book_repo = FakeBookRepo([])
-    favorite_repo = FakeFavoriteBookRepo(set())
+    book_service = FakeBookService([])
 
     await get_books(
         author=None,
         series=None,
         sort_by="progress",
         sort_dir="asc",
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
+        book_service=book_service,
         current_user=current_user,
     )
 
-    assert book_repo.calls == [
+    assert book_service.list_calls == [
         {
+            "user_id": current_user.id,
             "author": None,
             "series": None,
             "offset": 0,
             "limit": 100,
             "sort_by": "progress",
             "sort_dir": "asc",
-            "user_id": current_user.id,
         }
     ]
 
@@ -329,28 +358,26 @@ async def test_get_books_passes_sorting_to_repository():
 @pytest.mark.asyncio
 async def test_get_books_passes_pagination_to_repository():
     current_user = make_user()
-    book_repo = FakeBookRepo([])
-    favorite_repo = FakeFavoriteBookRepo(set())
+    book_service = FakeBookService([])
 
     await get_books(
         author=None,
         series=None,
         offset=20,
         limit=10,
-        book_repo=book_repo,
-        favorite_book_repo=favorite_repo,
+        book_service=book_service,
         current_user=current_user,
     )
 
-    assert book_repo.calls == [
+    assert book_service.list_calls == [
         {
+            "user_id": current_user.id,
             "author": None,
             "series": None,
             "offset": 20,
             "limit": 10,
             "sort_by": "created_at",
             "sort_dir": "desc",
-            "user_id": current_user.id,
         }
     ]
 
