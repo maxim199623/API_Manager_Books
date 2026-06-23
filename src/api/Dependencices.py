@@ -11,6 +11,7 @@ from src.api.security.jwt_tokens import create_access_token
 from src.api.websocket import manager as ws_manager
 from src.application.services.chapter_service import ChapterService
 from src.application.services.favorite_service import FavoriteService
+from src.application.services.reading_history_service import ReadingHistoryService
 from src.application.services.user_service import UserService
 from src.core.config import SettingsManager
 
@@ -88,6 +89,20 @@ async def get_chapter_service(
         chapter_repo=chapter_repo,
         log_repo=log_repo,
     )
+
+
+async def get_reading_history_service(
+    book_repo: BookRepository = Depends(get_book_repo),
+    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
+    log_repo: LogRepository = Depends(get_log_repo),
+) -> ReadingHistoryService:
+    """Получаем ReadingHistoryService"""
+    return ReadingHistoryService(
+        book_repo=book_repo,
+        chapter_repo=chapter_repo,
+        log_repo=log_repo,
+    )
+
 
 def get_settings_manager(request: Request) -> SettingsManager:
     """Получаем settings_manager"""
