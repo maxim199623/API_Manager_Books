@@ -80,6 +80,10 @@ class UserService:
         )
         return token
 
+    async def logout(self, user_id: uuid.UUID) -> None:
+        """Закрыть текущую сессию пользователя."""
+        await self._user_repo.set_session_id(user_id, None)
+
     async def add_user(self, payload: UserCreate, current_user: UserRead) -> dict[str, object]:
         """Добавить пользователя по текущим правилам HTTP-маршрута."""
         existing = await self._user_repo.get_by_email(payload.email)

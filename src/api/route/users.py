@@ -1,11 +1,11 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.DB.Repository.UserRepository.user_repository import UserNotFoundError, UserRepository
+from src.DB.Repository.UserRepository.user_repository import UserNotFoundError
 
 from src.api.Shems import AuthRequest, TokenResponse
 from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
-from src.api.dependencies import get_user_repo, get_user_service
+from src.api.dependencies import get_user_service
 from src.api.security.utils import require_admin, require_auth
 from src.application.services.user_service import (
     FirstUserMustBeAdminError,
@@ -20,9 +20,9 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.delete("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     current_user: UserRead = Depends(require_auth),
-    user_repo: UserRepository = Depends(get_user_repo),
+    user_service: UserService = Depends(get_user_service),
 ):
-    await user_repo.set_session_id(current_user.id, None)
+    await user_service.logout(current_user.id)
     return
 
 
