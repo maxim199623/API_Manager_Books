@@ -126,11 +126,20 @@ class TestBookChapterRepository:
     ):
         book = await _create_test_book(book_repo, "Book 1")
 
-        created = await chapter_repo.create_chapters(book_id=book.id, data=BookChapterCreate(
-            chapter=1,
-            description="Chapter one text",
-        ))
+        created_count = await chapter_repo.create_chapters(
+            book_id=book.id,
+            data=[
+                BookChapterCreate(
+                    chapter=1,
+                    description="Chapter one text",
+                )
+            ],
+        )
 
+        assert created_count == 1
+
+        created = await chapter_repo.get_by_book_and_number(book.id, 1)
+        assert created is not None
         assert created.id is not None
         assert created.book_id == book.id
         assert created.chapter == 1
@@ -146,6 +155,19 @@ class TestBookChapterRepository:
         assert by_pair is not None
         assert by_pair.id == created.id
 
+    async def test_create_chapters_rejects_single_schema(
+        self,
+        book_repo: BookRepository,
+        chapter_repo: BookChapterRepository,
+    ):
+        book = await _create_test_book(book_repo, "Book With Invalid Chapter Input")
+
+        with pytest.raises(TypeError, match="последовательность BookChapterCreate"):
+            await chapter_repo.create_chapters(
+                book.id,
+                BookChapterCreate(chapter=1, description="Text 1"),
+            )
+
     async def test_list_and_count_chapters(
         self,
         book_repo: BookRepository,
@@ -160,7 +182,7 @@ class TestBookChapterRepository:
         ]
 
         for data in chapters_data:
-            await chapter_repo.create_chapters(book.id, data)
+            await chapter_repo.create_chapters(book.id, [data])
 
         all_chapters = await chapter_repo.list_chapters(book.id)
         assert len(all_chapters) == 3
@@ -176,7 +198,10 @@ class TestBookChapterRepository:
     ):
         book = await _create_test_book(book_repo, "Updatable Book")
 
-        await chapter_repo.create_chapters(book.id, BookChapterCreate(chapter=1, description="Old text"))
+        await chapter_repo.create_chapters(
+            book.id,
+            [BookChapterCreate(chapter=1, description="Old text")],
+        )
 
         updated = await chapter_repo.update_chapter_by_number(
             book.id,
@@ -198,8 +223,14 @@ class TestBookChapterRepository:
     ):
         book = await _create_test_book(book_repo, "Delete Chapter Book")
 
-        await chapter_repo.create_chapters(book.id, BookChapterCreate(chapter=1, description="Text 1"))
-        await chapter_repo.create_chapters(book.id, BookChapterCreate(chapter=2, description="Text 2"))
+        await chapter_repo.create_chapters(
+            book.id,
+            [BookChapterCreate(chapter=1, description="Text 1")],
+        )
+        await chapter_repo.create_chapters(
+            book.id,
+            [BookChapterCreate(chapter=2, description="Text 2")],
+        )
 
         deleted = await chapter_repo.delete_chapter_by_number(book.id, 1)
         assert deleted is True
@@ -220,7 +251,10 @@ class TestBookChapterRepository:
         book = await _create_test_book(book_repo, "Book For Bulk Delete")
 
         for i in range(1, 5):
-            await chapter_repo.create_chapters(book.id, BookChapterCreate(chapter=i, description=f"Chapter {i}"))
+            await chapter_repo.create_chapters(
+                book.id,
+                [BookChapterCreate(chapter=i, description=f"Chapter {i}")],
+            )
 
         count_before = await chapter_repo.count_chapters(book.id)
         assert count_before == 4
@@ -257,7 +291,10 @@ class TestBookChapterRepository:
 
         # создаём несколько глав
         for i in range(1, 4):
-            await chapter_repo.create_chapters(book.id, BookChapterCreate(chapter=i, description=f"Ch {i}"))
+            await chapter_repo.create_chapters(
+                book.id,
+                [BookChapterCreate(chapter=i, description=f"Ch {i}")],
+            )
 
         count_before = await chapter_repo.count_chapters(book.id)
         assert count_before == 3

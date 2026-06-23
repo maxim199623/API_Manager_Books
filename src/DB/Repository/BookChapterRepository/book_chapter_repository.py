@@ -37,18 +37,22 @@ class BookChapterRepository:
         """
         Добавить список глав для книги book_id.
         """
+        if isinstance(data, BookChapterCreate):
+            raise TypeError(
+                "create_chapters ожидает последовательность BookChapterCreate, а не одну схему"
+            )
+
         if not data:
             return 0
 
         chapters = [
-        build_model_from_schema(
-            BookChapter,
-            chapter,
-            extra={"book_id": book_id},
-        )
-        for chapter in data
-    ]
-
+            build_model_from_schema(
+                BookChapter,
+                chapter,
+                extra={"book_id": book_id},
+            )
+            for chapter in data
+        ]
 
         self._session.add_all(chapters)
         await self._session.flush()
