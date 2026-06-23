@@ -68,6 +68,7 @@ async def get_book_file_service(
         book_repo=book_repo,
         log_repo=log_repo,
         session_manager=db_manager,
+        book_repo_factory=BookRepository,
     )
 
 

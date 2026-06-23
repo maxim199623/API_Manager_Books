@@ -2,13 +2,9 @@ import uuid
 from typing import Any, AsyncIterable, AsyncIterator, Callable, Protocol
 
 from src.schemas.books import BookUpdate
-from src.DB.Repository.BookRepository.book_repository import (
-    BOOK_BINARY_CHUNK_SIZE,
-    BookNotFoundError as RepositoryBookNotFoundError,
-    BookRepository,
-)
 from src.schemas.logs import LogCreate
-from src.DB.Repository.LogRepository.log_repository import LogRepository
+
+BOOK_BINARY_CHUNK_SIZE = 1024 * 1024
 
 
 class SessionManager(Protocol):
@@ -18,8 +14,48 @@ class SessionManager(Protocol):
         """Вернуть async context manager сессии."""
 
 
+class BookFileRecord(Protocol):
+    id: uuid.UUID
+    title: str
+
+
+class BookFileStorage(Protocol):
+    async def get_cover_meta(self, book_id: uuid.UUID) -> Any | None:
+        ...
+
+    async def get_file_meta(self, book_id: uuid.UUID) -> Any | None:
+        ...
+
+    async def update_book(
+        self,
+        book_id: uuid.UUID,
+        data: BookUpdate,
+        *,
+        cover_chunks: AsyncIterable[bytes] | None = None,
+        file_chunks: AsyncIterable[bytes] | None = None,
+    ) -> BookFileRecord:
+        ...
+
+
+class BookFileStreamer(Protocol):
+    async def iter_cover_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        ...
+
+    async def iter_file_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        ...
+
+
+class LogWriter(Protocol):
+    async def log_from_dto(self, payload: LogCreate) -> Any:
+        ...
+
+
 class BookFileNotFoundInServiceError(Exception):
     """Книга не найдена при обновлении файла или обложки."""
+
+
+def _is_book_not_found_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "BookNotFoundError"
 
 
 class BookFileService:
@@ -27,10 +63,10 @@ class BookFileService:
 
     def __init__(
         self,
-        book_repo: BookRepository,
-        log_repo: LogRepository,
+        book_repo: BookFileStorage,
+        log_repo: LogWriter,
         session_manager: SessionManager,
-        book_repo_factory: Callable[[Any], BookRepository] = BookRepository,
+        book_repo_factory: Callable[[Any], BookFileStreamer],
     ):
         self._book_repo = book_repo
         self._log_repo = log_repo
@@ -73,8 +109,10 @@ class BookFileService:
                 BookUpdate(cover_mime=content_type),
                 cover_chunks=cover_chunks,
             )
-        except RepositoryBookNotFoundError as exc:
-            raise BookFileNotFoundInServiceError from exc
+        except Exception as exc:
+            if _is_book_not_found_error(exc):
+                raise BookFileNotFoundInServiceError from exc
+            raise
 
         await self._log_repo.log_from_dto(
             LogCreate(
@@ -104,8 +142,10 @@ class BookFileService:
                 ),
                 file_chunks=file_chunks,
             )
-        except RepositoryBookNotFoundError as exc:
-            raise BookFileNotFoundInServiceError from exc
+        except Exception as exc:
+            if _is_book_not_found_error(exc):
+                raise BookFileNotFoundInServiceError from exc
+            raise
 
         await self._log_repo.log_from_dto(
             LogCreate(
