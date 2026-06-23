@@ -1,7 +1,9 @@
+import ast
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 import uuid
 
@@ -21,6 +23,30 @@ from src.DB.Repository.BookRepository.book_repository import (
 )
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserRead
+
+
+def test_books_route_imports_book_dtos_from_repository_schemas() -> None:
+    route_path = Path(books_route.__file__)
+    tree = ast.parse(route_path.read_text(encoding="utf-8"))
+    dto_names = {"BookCreate", "BookListRead", "BookMetadataUpdate"}
+
+    service_imports = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "src.application.services.book_service"
+        for alias in node.names
+    }
+    schema_imports = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        and node.module == "src.DB.Repository.BookRepository.Shems"
+        for alias in node.names
+    }
+
+    assert service_imports.isdisjoint(dto_names)
+    assert dto_names <= schema_imports
 
 
 @dataclass

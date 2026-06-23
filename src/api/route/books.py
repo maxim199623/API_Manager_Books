@@ -3,6 +3,11 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
+from src.DB.Repository.BookRepository.Shems import (
+    BookCreate,
+    BookListRead,
+    BookMetadataUpdate,
+)
 from src.DB.Repository.UserRepository.Shems import UserRead
 from src.api.dependencies import get_book_service
 from src.api.route.book_favorites import favorite_book, unfavorite_book  # noqa: F401
@@ -10,9 +15,6 @@ from src.api.route.book_files import _iter_upload_chunks
 from src.api.security.utils import require_admin, require_auth
 from src.application.services.book_service import (
     BookAlreadyExistsError,
-    BookCreate,
-    BookListRead,
-    BookMetadataUpdate,
     BookNotFoundInServiceError,
     BookService,
 )
