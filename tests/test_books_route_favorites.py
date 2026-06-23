@@ -1,10 +1,8 @@
 import ast
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from types import SimpleNamespace
 import uuid
 
 import pytest
@@ -23,6 +21,7 @@ from src.DB.Repository.BookRepository.book_repository import (
 )
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserRead
+from src.application.services.book_file_service import BookFileNotFoundInServiceError
 
 
 def test_books_route_imports_book_dtos_from_repository_schemas() -> None:
@@ -155,44 +154,6 @@ class FakeFavoriteService:
             raise BookNotFoundError
 
 
-class FakeLogRepo:
-    def __init__(self):
-        self.entries = []
-
-    async def log_from_dto(self, payload) -> None:
-        self.entries.append(payload)
-
-
-class FakeBookUpdateRepo:
-    def __init__(self, *, exists: bool = True):
-        self.exists = exists
-        self.calls = []
-
-    async def update_book(self, book_id, payload, *, cover_chunks=None, file_chunks=None):
-        cover_data = None
-        if cover_chunks is not None:
-            cover_data = [chunk async for chunk in cover_chunks]
-
-        file_data = None
-        if file_chunks is not None:
-            file_data = [chunk async for chunk in file_chunks]
-
-        self.calls.append(
-            {
-                "book_id": book_id,
-                "payload": payload.model_dump(exclude_unset=True),
-                "cover_chunks": cover_data,
-                "file_chunks": file_data,
-            }
-        )
-
-        if not self.exists:
-            raise BookNotFoundError
-
-        title = payload.title or "Stored title"
-        return SimpleNamespace(id=book_id, title=title)
-
-
 @dataclass(frozen=True)
 class FakeBinaryMeta:
     content_type: str | None
@@ -200,7 +161,7 @@ class FakeBinaryMeta:
     size: int
 
 
-class FakeBinaryRepository:
+class FakeBookFileService:
     def __init__(
         self,
         *,
@@ -208,11 +169,15 @@ class FakeBinaryRepository:
         file_meta: FakeBinaryMeta | None = None,
         cover_chunks: list[bytes] | None = None,
         file_chunks: list[bytes] | None = None,
+        update_exists: bool = True,
     ):
         self.cover_meta = cover_meta
         self.file_meta = file_meta
         self.cover_chunks = cover_chunks or []
         self.file_chunks = file_chunks or []
+        self.update_exists = update_exists
+        self.cover_updates = []
+        self.file_updates = []
 
     async def get_cover_meta(self, book_id: uuid.UUID) -> FakeBinaryMeta | None:
         return self.cover_meta
@@ -228,21 +193,32 @@ class FakeBinaryRepository:
         for chunk in self.file_chunks:
             yield chunk
 
+    async def update_cover(self, user_id, book_id, content_type, cover_chunks):
+        cover_data = [chunk async for chunk in cover_chunks]
+        self.cover_updates.append(
+            {
+                "user_id": user_id,
+                "book_id": book_id,
+                "content_type": content_type,
+                "cover_chunks": cover_data,
+            }
+        )
+        if not self.update_exists:
+            raise BookFileNotFoundInServiceError
 
-class FakeBinaryRepositoryFactory:
-    def __init__(self, repo: FakeBinaryRepository):
-        self.repo = repo
-        self.sessions = []
-
-    def __call__(self, session):
-        self.sessions.append(session)
-        return self.repo
-
-
-class FakeDBManager:
-    @asynccontextmanager
-    async def session(self):
-        yield object()
+    async def update_file(self, user_id, book_id, filename, content_type, file_chunks):
+        file_data = [chunk async for chunk in file_chunks]
+        self.file_updates.append(
+            {
+                "user_id": user_id,
+                "book_id": book_id,
+                "filename": filename,
+                "content_type": content_type,
+                "file_chunks": file_data,
+            }
+        )
+        if not self.update_exists:
+            raise BookFileNotFoundInServiceError
 
 
 def make_user() -> UserRead:
@@ -477,17 +453,15 @@ async def test_unfavorite_book_returns_404_when_book_missing():
 
 
 @pytest.mark.asyncio
-async def test_get_book_cover_streams_chunked_bytes_with_actual_mime(monkeypatch):
-    repo = FakeBinaryRepository(
+async def test_get_book_cover_streams_chunked_bytes_with_actual_mime():
+    book_file_service = FakeBookFileService(
         cover_meta=FakeBinaryMeta(content_type="image/webp", file_name=None, size=6),
         cover_chunks=[b"ab", b"cd", b"ef"],
     )
-    factory = FakeBinaryRepositoryFactory(repo)
-    monkeypatch.setattr(book_files_route, "BookRepository", factory)
 
     response = await book_files_route.get_book_cover(
         book_id=uuid.uuid4(),
-        db_manager=FakeDBManager(),
+        book_file_service=book_file_service,
         current_user=make_user(),
     )
 
@@ -495,12 +469,11 @@ async def test_get_book_cover_streams_chunked_bytes_with_actual_mime(monkeypatch
 
     assert response.media_type == "image/webp"
     assert body == b"abcdef"
-    assert len(factory.sessions) == 2
 
 
 @pytest.mark.asyncio
-async def test_get_book_file_streams_chunked_bytes_and_sets_filename(monkeypatch):
-    repo = FakeBinaryRepository(
+async def test_get_book_file_streams_chunked_bytes_and_sets_filename():
+    book_file_service = FakeBookFileService(
         file_meta=FakeBinaryMeta(
             content_type="application/epub+zip",
             file_name="solo-leveling.epub",
@@ -508,12 +481,10 @@ async def test_get_book_file_streams_chunked_bytes_and_sets_filename(monkeypatch
         ),
         file_chunks=[b"Solo", b"Leve", b"ling"],
     )
-    factory = FakeBinaryRepositoryFactory(repo)
-    monkeypatch.setattr(book_files_route, "BookRepository", factory)
 
     response = await book_files_route.get_book_file(
         book_id=uuid.uuid4(),
-        db_manager=FakeDBManager(),
+        book_file_service=book_file_service,
         current_user=make_user(),
     )
 
@@ -522,67 +493,56 @@ async def test_get_book_file_streams_chunked_bytes_and_sets_filename(monkeypatch
     assert response.media_type == "application/epub+zip"
     assert response.headers["Content-Disposition"] == 'attachment; filename="solo-leveling.epub"'
     assert body == b"SoloLeveling"
-    assert len(factory.sessions) == 2
 
 
 @pytest.mark.asyncio
 async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
     book_id = uuid.uuid4()
-    book_repo = FakeBookUpdateRepo()
-    log_repo = FakeLogRepo()
+    book_file_service = FakeBookFileService()
+    current_user = make_admin()
 
     result = await book_files_route.update_book_cover(
         book_id=book_id,
         cover=make_upload("cover.webp", b"cover-bytes", "image/webp"),
-        book_repo=book_repo,
-        log_repo=log_repo,
-        current_user=make_admin(),
+        book_file_service=book_file_service,
+        current_user=current_user,
     )
 
     assert result is None
-    assert book_repo.calls == [
+    assert book_file_service.cover_updates == [
         {
+            "user_id": current_user.id,
             "book_id": book_id,
-            "payload": {"cover_mime": "image/webp"},
+            "content_type": "image/webp",
             "cover_chunks": [b"cover-bytes"],
-            "file_chunks": None,
         }
     ]
-    assert len(log_repo.entries) == 1
-    assert log_repo.entries[0].action == "update_book_cover"
-    assert log_repo.entries[0].entity_id == book_id
 
 
 @pytest.mark.asyncio
 async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
     book_id = uuid.uuid4()
-    book_repo = FakeBookUpdateRepo()
-    log_repo = FakeLogRepo()
+    book_file_service = FakeBookFileService()
+    current_user = make_admin()
     payload = (b"a" * BOOK_BINARY_CHUNK_SIZE) + b"tail"
 
     result = await book_files_route.update_book_file(
         book_id=book_id,
         file=make_upload("solo-leveling.epub", payload, "application/epub+zip"),
-        book_repo=book_repo,
-        log_repo=log_repo,
-        current_user=make_admin(),
+        book_file_service=book_file_service,
+        current_user=current_user,
     )
 
     assert result is None
-    assert book_repo.calls == [
+    assert book_file_service.file_updates == [
         {
+            "user_id": current_user.id,
             "book_id": book_id,
-            "payload": {
-                "file_name": "solo-leveling.epub",
-                "file_mime": "application/epub+zip",
-            },
-            "cover_chunks": None,
+            "filename": "solo-leveling.epub",
+            "content_type": "application/epub+zip",
             "file_chunks": [b"a" * BOOK_BINARY_CHUNK_SIZE, b"tail"],
         }
     ]
-    assert len(log_repo.entries) == 1
-    assert log_repo.entries[0].action == "update_book_file"
-    assert log_repo.entries[0].entity_id == book_id
 
 
 def test_book_metadata_update_rejects_binary_fields_after_split_endpoints():

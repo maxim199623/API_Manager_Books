@@ -10,6 +10,7 @@ from src.DB.Repository.UserRepository.user_repository import UserRepository
 from src.api.security.jwt_tokens import create_access_token
 from src.api.websocket import manager as ws_manager
 from src.application.services.book_service import BookService
+from src.application.services.book_file_service import BookFileService
 from src.application.services.chapter_service import ChapterService
 from src.application.services.favorite_service import FavoriteService
 from src.application.services.reading_history_service import ReadingHistoryService
@@ -54,6 +55,19 @@ async def get_user_service(
 async def get_book_repo(session=Depends(get_session)) -> BookRepository:
     """Получаем BookRepository"""
     return BookRepository(session)
+
+
+async def get_book_file_service(
+    db_manager: AsyncDBManager = Depends(get_db_manager),
+    book_repo: BookRepository = Depends(get_book_repo),
+    log_repo: LogRepository = Depends(get_log_repo),
+) -> BookFileService:
+    """Получаем BookFileService"""
+    return BookFileService(
+        book_repo=book_repo,
+        log_repo=log_repo,
+        session_manager=db_manager,
+    )
 
 
 async def get_favorite_book_repo(session=Depends(get_session)) -> FavoriteBookRepository:
