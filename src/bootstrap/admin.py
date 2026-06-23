@@ -3,7 +3,7 @@ from sqlalchemy import select
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.ORM import User
-from src.DB.Repository.UserRepository.Shems import UserCreate
+from src.schemas.users import UserCreate
 from src.DB.Repository.UserRepository.user_repository import UserRepository
 
 

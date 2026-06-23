@@ -4,7 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 from src.api.dependencies import get_book_file_service
 from src.api.security.utils import require_admin, require_auth
 from src.application.services.book_file_service import (

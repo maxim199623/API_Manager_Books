@@ -9,7 +9,7 @@ from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.user_repository import UserRepository, EmailAlreadyExistsError, UserNotFoundError
-from src.DB.Repository.UserRepository.Shems import UserCreate
+from src.schemas.users import UserCreate
 from src.security.passwords import verify_password
 
 pytestmark = pytest.mark.asyncio

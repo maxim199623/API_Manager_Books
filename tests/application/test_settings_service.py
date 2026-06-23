@@ -1,9 +1,9 @@
 import pytest
 
-from src.api.Shems import SettingsUpdate
+from src.schemas.api import SettingsUpdate
 from src.application.services.settings_service import SettingsMigrationError, SettingsService
 from src.core.config import AppSettings
-from src.core.Shems import DatabaseSettings, PostgresSettings, SQLiteSettings
+from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
 
 class FakeSettingsManager:

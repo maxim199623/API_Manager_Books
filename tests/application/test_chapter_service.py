@@ -5,7 +5,7 @@ import uuid
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate, BookChapterUpdate
+from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.application.services.chapter_service import (

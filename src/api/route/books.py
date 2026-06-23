@@ -3,12 +3,12 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
-from src.DB.Repository.BookRepository.Shems import (
+from src.schemas.books import (
     BookCreate,
     BookListRead,
     BookMetadataUpdate,
 )
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 from src.api.dependencies import get_book_service
 from src.api.route.book_favorites import favorite_book, unfavorite_book  # noqa: F401
 from src.api.route.book_files import _iter_upload_chunks

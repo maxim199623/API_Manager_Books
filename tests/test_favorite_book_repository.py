@@ -5,14 +5,14 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.exc import IntegrityError
 
-from src.core.Shems import DatabaseSettings, PostgresSettings, SQLiteSettings
+from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
-from src.DB.Repository.BookRepository.Shems import BookCreate
+from src.schemas.books import BookCreate
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
 from src.DB.Repository.UserRepository.Enums import UserRole
-from src.DB.Repository.UserRepository.Shems import UserCreate
+from src.schemas.users import UserCreate
 from src.DB.Repository.UserRepository.user_repository import UserRepository
 
 pytestmark = pytest.mark.asyncio

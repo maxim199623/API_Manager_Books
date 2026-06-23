@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.DB.Repository.UserRepository.Enums import UserRole
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 
 
 class FakeReadingHistoryService:

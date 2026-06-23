@@ -6,9 +6,9 @@ from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.ORM import User
-from src.DB.Repository.UserRepository.Shems import UserRole
-from src.DB.Repository.UserRepository.Shems import UserCreate
+from src.schemas.users import UserCreate
 from src.security.passwords import hash_password
 
 class EmailAlreadyExistsError(Exception):

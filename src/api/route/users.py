@@ -2,8 +2,8 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.Shems import AuthRequest, TokenResponse
-from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
+from src.schemas.api import AuthRequest, TokenResponse
+from src.schemas.users import UserCreate, UserRead, UserUpdate
 from src.api.dependencies import get_user_service
 from src.api.security.utils import require_admin, require_auth
 from src.application.services.user_service import (

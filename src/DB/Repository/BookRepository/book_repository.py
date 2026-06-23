@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.DB.Repository.BookChapterRepository.ORM import BookChapter
 from src.DB.Repository.LogRepository.ORM import LogEntry
 from src.DB.Repository.BookRepository.ORM import Book, BookCoverChunk, BookFileChunk
-from src.DB.Repository.BookRepository.Shems import BookCreate, BookUpdate
+from src.schemas.books import BookCreate, BookUpdate
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
 
 BOOK_BINARY_CHUNK_SIZE = 1024 * 1024

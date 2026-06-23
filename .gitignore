@@ -264,6 +264,7 @@ cython_debug/
 /.worktrees/
 /docs/superpowers/plans/2026-05-22-favorite-books.md
 /docs/superpowers/specs/2026-05-22-favorite-books-design.md
+/docs/
 /Тест/
 /docs/superpowers/plans/2026-06-01-book-list-sorting.md
 

@@ -6,7 +6,7 @@ from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.DB.Repository.BookChapterRepository.ORM import BookChapter
-from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate, BookChapterUpdate
+from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
 
 

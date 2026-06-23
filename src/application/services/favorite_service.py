@@ -2,7 +2,7 @@ import uuid
 
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 
 

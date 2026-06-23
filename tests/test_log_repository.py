@@ -10,7 +10,7 @@ from src.core.config import SettingsManager
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
 
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 
 

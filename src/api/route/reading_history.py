@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 from src.api.dependencies import get_reading_history_service
 from src.api.security.utils import require_auth
 from src.application.services.reading_history_service import ReadingHistoryService

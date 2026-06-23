@@ -3,14 +3,14 @@ from typing import AsyncIterator
 import pytest
 import pytest_asyncio
 
-from src.core.Shems import DatabaseSettings, PostgresSettings, SQLiteSettings
+from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
-from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate
+from src.schemas.book_chapters import BookChapterCreate
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import (
     BookChapterRepository,
 )
-from src.DB.Repository.BookRepository.Shems import BookCreate
+from src.schemas.books import BookCreate
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.UserRepository.ORM import User
 

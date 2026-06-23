@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from src.DB.Repository.BookChapterRepository.Shems import (
+from src.schemas.book_chapters import (
     BookChapterCreate,
     BookChapterListRead,
     BookChapterRead,
@@ -11,9 +11,9 @@ from src.DB.Repository.BookChapterRepository.Shems import (
 )
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 from src.api.dependencies import get_chapter_service
-from src.api.Shems import ChaptersCountResponse
+from src.schemas.api import ChaptersCountResponse
 from src.api.security.utils import require_admin, require_auth
 from src.application.services.chapter_service import (
     ChapterService,

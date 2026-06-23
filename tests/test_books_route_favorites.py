@@ -13,18 +13,18 @@ from starlette.datastructures import Headers
 from src.api.route import book_files as book_files_route
 from src.api.route import books as books_route
 from src.api.route.books import get_books
-from src.DB.Repository.BookRepository import Shems as book_shems
-from src.DB.Repository.BookRepository.Shems import BookListRead
+from src.schemas import books as book_shems
+from src.schemas.books import BookListRead
 from src.DB.Repository.BookRepository.book_repository import (
     BOOK_BINARY_CHUNK_SIZE,
     BookNotFoundError,
 )
 from src.DB.Repository.UserRepository.Enums import UserRole
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 from src.application.services.book_file_service import BookFileNotFoundInServiceError
 
 
-def test_books_route_imports_book_dtos_from_repository_schemas() -> None:
+def test_books_route_imports_book_dtos_from_schemas_package() -> None:
     route_path = Path(books_route.__file__)
     tree = ast.parse(route_path.read_text(encoding="utf-8"))
     dto_names = {"BookCreate", "BookListRead", "BookMetadataUpdate"}
@@ -40,7 +40,7 @@ def test_books_route_imports_book_dtos_from_repository_schemas() -> None:
         alias.name
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom)
-        and node.module == "src.DB.Repository.BookRepository.Shems"
+        and node.module == "src.schemas.books"
         for alias in node.names
     }
 

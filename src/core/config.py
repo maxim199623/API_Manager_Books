@@ -2,7 +2,7 @@ from configparser import ConfigParser
 from pathlib import Path
 from pydantic import BaseModel
 
-from src.core.Shems import SQLiteSettings, DatabaseSettings, PostgresSettings
+from src.schemas.config import SQLiteSettings, DatabaseSettings, PostgresSettings
 
 class AppSettings(BaseModel):
     database: DatabaseSettings

@@ -9,7 +9,7 @@ from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
 
 from src.DB.Repository.BookRepository.book_repository import BookRepository, BookNotFoundError
-from src.DB.Repository.BookRepository.Shems import BookCreate, BookUpdate
+from src.schemas.books import BookCreate, BookUpdate
 
 pytestmark = pytest.mark.asyncio
 

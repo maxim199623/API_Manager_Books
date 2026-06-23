@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, AsyncIterable, Literal, Protocol, Sequence
 
-from src.DB.Repository.BookRepository.Shems import (
+from src.schemas.books import (
     BookCreate,
     BookListRead,
     BookMetadataUpdate,
@@ -12,7 +12,7 @@ from src.DB.Repository.BookRepository.book_repository import (
     BookRepository,
 )
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 
 BookSortField = Literal["created_at", "progress", "title"]

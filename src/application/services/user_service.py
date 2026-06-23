@@ -1,10 +1,10 @@
 import uuid
 from typing import Any, Callable, Protocol, Sequence
 
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.Enums import UserRole
-from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
+from src.schemas.users import UserCreate, UserRead, UserUpdate
 from src.DB.Repository.UserRepository.user_repository import (
     UserNotFoundError as RepositoryUserNotFoundError,
     UserRepository,

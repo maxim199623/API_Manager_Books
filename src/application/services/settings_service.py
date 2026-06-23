@@ -4,8 +4,8 @@ from typing import Protocol
 
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
-from src.api.Shems import SettingsResponse, SettingsUpdate
-from src.core.Shems import DatabaseSettings, PostgresSettings, SQLiteSettings
+from src.schemas.api import SettingsResponse, SettingsUpdate
+from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 from src.core.config import AppSettings, SettingsManager
 
 

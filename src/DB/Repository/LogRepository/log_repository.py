@@ -8,7 +8,7 @@ from sqlalchemy.inspection import inspect as sa_inspect
 
 from src.DB.Repository import BookChapter
 from src.DB.Repository.LogRepository.ORM import LogEntry
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 
 from src.DB.Repository.utils import patch_model_from_schema, build_model_from_schema
 

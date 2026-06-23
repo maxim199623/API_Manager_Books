@@ -1,13 +1,13 @@
 import uuid
 from typing import Any, AsyncIterable, AsyncIterator, Callable, Protocol
 
-from src.DB.Repository.BookRepository.Shems import BookUpdate
+from src.schemas.books import BookUpdate
 from src.DB.Repository.BookRepository.book_repository import (
     BOOK_BINARY_CHUNK_SIZE,
     BookNotFoundError as RepositoryBookNotFoundError,
     BookRepository,
 )
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 
 

@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from src.DB.Repository.BookRepository.Shems import BookCreate, BookMetadataUpdate
+from src.schemas.books import BookCreate, BookMetadataUpdate
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.application.services.book_service import (
     BookAlreadyExistsError,

@@ -1,9 +1,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 
-from src.DB.Repository.UserRepository.Shems import UserRead
+from src.schemas.users import UserRead
 from src.api.dependencies import get_settings_service
-from src.api.Shems import SettingsResponse, SettingsUpdate
+from src.schemas.api import SettingsResponse, SettingsUpdate
 from src.api.security.utils import require_admin
 from src.application.services.settings_service import SettingsMigrationError, SettingsService
 

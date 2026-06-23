@@ -1,9 +1,9 @@
 import uuid
 
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
-from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate, BookChapterUpdate
+from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 from src.DB.Repository.BookRepository.book_repository import BookRepository
-from src.DB.Repository.LogRepository.Shems import LogCreate
+from src.schemas.logs import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 
 

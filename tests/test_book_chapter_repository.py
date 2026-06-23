@@ -11,9 +11,9 @@ from src.DB.base import Base
 from src.DB.Repository.BookRepository.ORM import Book
 
 from src.DB.Repository.BookRepository.book_repository import BookRepository
-from src.DB.Repository.BookRepository.Shems import BookCreate
+from src.schemas.books import BookCreate
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository, BookChapterNotFoundError
-from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate, BookChapterUpdate
+from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 
 
 pytestmark = pytest.mark.asyncio
