@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.DB.Repository.UserRepository.Shems import UserRead
-from src.api.Dependencices import get_favorite_service
+from src.api.dependencies import get_favorite_service
 from src.api.security.utils import require_auth
 from src.application.services.favorite_service import FavoriteService
 

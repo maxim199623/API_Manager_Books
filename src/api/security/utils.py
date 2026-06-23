@@ -8,7 +8,7 @@ from src.DB.Repository import User
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserRead
 from src.DB.Repository.UserRepository.user_repository import UserRepository
-from src.api.Dependencices import get_user_repo
+from src.api.dependencies import get_user_repo
 from src.api.security.jwt_tokens import decode_access_token
 
 from pathlib import Path

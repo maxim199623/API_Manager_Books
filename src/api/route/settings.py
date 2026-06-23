@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.Repository.UserRepository.Shems import UserRead
 from src.DB.base import Base
-from src.api.Dependencices import get_settings_manager
+from src.api.dependencies import get_settings_manager
 from src.api.Shems import SettingsResponse, SettingsUpdate
 from src.api.security.utils import require_admin
 from src.core.config import SettingsManager

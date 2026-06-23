@@ -9,7 +9,7 @@ from src.DB.Repository.BookRepository.book_repository import BOOK_BINARY_CHUNK_S
 from src.DB.Repository.LogRepository.Shems import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.Shems import UserRead
-from src.api.Dependencices import get_book_repo, get_db_manager, get_log_repo
+from src.api.dependencies import get_book_repo, get_db_manager, get_log_repo
 from src.api.security.utils import require_admin, require_auth
 
 router = APIRouter(prefix="/books", tags=["book-files"])

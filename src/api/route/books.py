@@ -9,7 +9,7 @@ from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import Fa
 from src.DB.Repository.LogRepository.Shems import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
 from src.DB.Repository.UserRepository.Shems import UserRead
-from src.api.Dependencices import get_log_repo, get_book_repo, get_favorite_book_repo
+from src.api.dependencies import get_log_repo, get_book_repo, get_favorite_book_repo
 from src.api.route.book_favorites import favorite_book, unfavorite_book  # noqa: F401
 from src.api.route.book_files import _iter_upload_chunks
 from src.api.security.utils import require_admin, require_auth

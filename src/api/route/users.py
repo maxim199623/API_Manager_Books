@@ -5,7 +5,7 @@ from src.DB.Repository.UserRepository.user_repository import UserNotFoundError, 
 
 from src.api.Shems import AuthRequest, TokenResponse
 from src.DB.Repository.UserRepository.Shems import UserCreate, UserRead, UserUpdate
-from src.api.Dependencices import get_user_repo, get_user_service
+from src.api.dependencies import get_user_repo, get_user_service
 from src.api.security.utils import require_admin, require_auth
 from src.application.services.user_service import (
     FirstUserMustBeAdminError,
