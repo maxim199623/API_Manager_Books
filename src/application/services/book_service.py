@@ -7,16 +7,75 @@ from src.schemas.books import (
     BookMetadataUpdate,
     BookUpdate,
 )
-from src.DB.Repository.BookRepository.book_repository import (
-    BookNotFoundError as RepositoryBookNotFoundError,
-    BookRepository,
-)
-from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
 from src.schemas.logs import LogCreate
-from src.DB.Repository.LogRepository.log_repository import LogRepository
 
 BookSortField = Literal["created_at", "progress", "title"]
 SortDirection = Literal["asc", "desc"]
+
+
+class BookRecord(Protocol):
+    id: uuid.UUID
+    title: str
+    author: str | None
+
+
+class BookStorage(Protocol):
+    async def get_by_title_author(self, title: str, author: str | None) -> BookRecord | None:
+        ...
+
+    async def create_book(
+        self,
+        data: BookCreate,
+        *,
+        cover_chunks: AsyncIterable[bytes] | None = None,
+        file_chunks: AsyncIterable[bytes] | None = None,
+    ) -> BookRecord:
+        ...
+
+    async def list_books(
+        self,
+        *,
+        author: str | None = None,
+        series: str | None = None,
+        offset: int = 0,
+        limit: int = 100,
+        sort_by: BookSortField = "created_at",
+        sort_dir: SortDirection = "desc",
+        user_id: uuid.UUID,
+    ) -> Sequence[BookRecord]:
+        ...
+
+    async def update_book(self, book_id: uuid.UUID, data: BookUpdate) -> BookRecord:
+        ...
+
+    async def delete_book(self, book_id: uuid.UUID) -> bool:
+        ...
+
+
+class FavoriteBookLookup(Protocol):
+    async def list_favorite_book_ids(
+        self,
+        user_id: uuid.UUID,
+        book_ids: list[uuid.UUID],
+    ) -> set[uuid.UUID]:
+        ...
+
+
+class LogWriter(Protocol):
+    async def log_from_dto(self, payload: LogCreate) -> Any:
+        ...
+
+    async def log_action(
+        self,
+        *,
+        user_id: uuid.UUID | None,
+        action: str,
+        entity: str | None = None,
+        entity_id: uuid.UUID | None = None,
+        details: str | None = None,
+        **extra_fields: Any,
+    ) -> Any:
+        ...
 
 
 class NotificationManager(Protocol):
@@ -34,14 +93,18 @@ class BookNotFoundInServiceError(Exception):
     """Книга не найдена в сценарии сервиса."""
 
 
+def _is_book_not_found_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "BookNotFoundError"
+
+
 class BookService:
     """Сервис сценариев CRUD и листинга книг без привязки к HTTP-слою."""
 
     def __init__(
         self,
-        book_repo: BookRepository,
-        favorite_book_repo: FavoriteBookRepository,
-        log_repo: LogRepository,
+        book_repo: BookStorage,
+        favorite_book_repo: FavoriteBookLookup,
+        log_repo: LogWriter,
         notification_manager: NotificationManager,
     ):
         self._book_repo = book_repo
@@ -131,8 +194,10 @@ class BookService:
                 book_id,
                 BookUpdate(**payload.model_dump(exclude_unset=True)),
             )
-        except RepositoryBookNotFoundError as exc:
-            raise BookNotFoundInServiceError from exc
+        except Exception as exc:
+            if _is_book_not_found_error(exc):
+                raise BookNotFoundInServiceError from exc
+            raise
 
         await self._log_repo.log_from_dto(
             LogCreate(
