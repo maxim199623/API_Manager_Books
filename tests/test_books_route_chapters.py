@@ -4,12 +4,18 @@ import uuid
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
+from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate, BookChapterUpdate
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
 from src.DB.Repository.UserRepository.Enums import UserRole
 from src.DB.Repository.UserRepository.Shems import UserRead
 from src.api.route import book_chapters as books_route
+from src.application.services.chapter_service import (
+    DuplicateChapterNumbersInRequestError,
+    EmptyChapterListError,
+)
 
 
 class FakeChapterService:
@@ -21,15 +27,21 @@ class FakeChapterService:
         chapter=None,
         book_exists: bool = True,
         chapter_exists: bool = True,
+        add_error: Exception | None = None,
+        update_error: Exception | None = None,
     ):
         self.headers = headers if headers is not None else []
         self.count_result = count_result
         self.chapter = chapter
         self.book_exists = book_exists
         self.chapter_exists = chapter_exists
+        self.add_error = add_error
+        self.update_error = update_error
         self.header_calls: list[uuid.UUID] = []
         self.count_calls: list[uuid.UUID] = []
         self.get_calls: list[tuple[uuid.UUID, uuid.UUID, int]] = []
+        self.add_calls = []
+        self.update_calls = []
 
     async def list_chapter_headers(self, book_id: uuid.UUID):
         self.header_calls.append(book_id)
@@ -55,6 +67,22 @@ class FakeChapterService:
         if not self.chapter_exists:
             raise BookChapterNotFoundError
         return self.chapter
+
+    async def add_chapters(self, user_id: uuid.UUID, book_id: uuid.UUID, chapters):
+        self.add_calls.append((user_id, book_id, chapters))
+        if self.add_error is not None:
+            raise self.add_error
+
+    async def update_chapter(
+        self,
+        user_id: uuid.UUID,
+        book_id: uuid.UUID,
+        chapter_num: int,
+        payload,
+    ):
+        self.update_calls.append((user_id, book_id, chapter_num, payload))
+        if self.update_error is not None:
+            raise self.update_error
 
 
 def make_user() -> UserRead:
@@ -248,3 +276,104 @@ async def test_get_book_chapter_returns_404_when_chapter_is_missing():
     assert excinfo.value.status_code == 404
     assert excinfo.value.detail == "Chapter not found"
     assert service.get_calls == [(user.id, book_id, chapter_num)]
+
+
+@pytest.mark.asyncio
+async def test_add_book_chapters_calls_service():
+    book_id = uuid.uuid4()
+    user = make_user()
+    chapters = [
+        BookChapterCreate(chapter=1, chapter_name="Start", description="Text"),
+    ]
+    service = FakeChapterService()
+
+    result = await books_route.add_book_chapters(
+        book_id=book_id,
+        chapters=chapters,
+        chapter_service=service,
+        current_user=user,
+    )
+
+    assert result is None
+    assert service.add_calls == [(user.id, book_id, chapters)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "status_code", "detail"),
+    [
+        (BookNotFoundError(), 404, "Book not found"),
+        (EmptyChapterListError(), 400, "Chapter list cannot be empty"),
+        (
+            DuplicateChapterNumbersInRequestError(),
+            409,
+            "Duplicate chapter numbers in request",
+        ),
+        (
+            IntegrityError("insert", {}, Exception("duplicate")),
+            409,
+            "Duplicate chapter numbers for this book",
+        ),
+    ],
+)
+async def test_add_book_chapters_maps_service_errors_to_http(error, status_code, detail):
+    book_id = uuid.uuid4()
+    user = make_user()
+    chapters = [
+        BookChapterCreate(chapter=1, chapter_name="Start", description="Text"),
+    ]
+    service = FakeChapterService(add_error=error)
+
+    with pytest.raises(HTTPException) as excinfo:
+        await books_route.add_book_chapters(
+            book_id=book_id,
+            chapters=chapters,
+            chapter_service=service,
+            current_user=user,
+        )
+
+    assert excinfo.value.status_code == status_code
+    assert excinfo.value.detail == detail
+    assert service.add_calls == [(user.id, book_id, chapters)]
+
+
+@pytest.mark.asyncio
+async def test_update_book_chapter_calls_service():
+    book_id = uuid.uuid4()
+    chapter_num = 2
+    user = make_user()
+    payload = BookChapterUpdate(chapter_name="Updated")
+    service = FakeChapterService()
+
+    result = await books_route.update_book_chapter(
+        book_id=book_id,
+        chapter_num=chapter_num,
+        payload=payload,
+        chapter_service=service,
+        current_user=user,
+    )
+
+    assert result is None
+    assert service.update_calls == [(user.id, book_id, chapter_num, payload)]
+
+
+@pytest.mark.asyncio
+async def test_update_book_chapter_returns_404_when_chapter_is_missing():
+    book_id = uuid.uuid4()
+    chapter_num = 2
+    user = make_user()
+    payload = BookChapterUpdate(description="Updated text")
+    service = FakeChapterService(update_error=BookChapterNotFoundError())
+
+    with pytest.raises(HTTPException) as excinfo:
+        await books_route.update_book_chapter(
+            book_id=book_id,
+            chapter_num=chapter_num,
+            payload=payload,
+            chapter_service=service,
+            current_user=user,
+        )
+
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.detail == "Chapter not found"
+    assert service.update_calls == [(user.id, book_id, chapter_num, payload)]

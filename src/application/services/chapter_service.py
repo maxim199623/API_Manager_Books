@@ -1,9 +1,18 @@
 import uuid
 
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
+from src.DB.Repository.BookChapterRepository.Shems import BookChapterCreate, BookChapterUpdate
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.LogRepository.Shems import LogCreate
 from src.DB.Repository.LogRepository.log_repository import LogRepository
+
+
+class EmptyChapterListError(Exception):
+    """Список глав пуст."""
+
+
+class DuplicateChapterNumbersInRequestError(Exception):
+    """В запросе есть повторяющиеся номера глав."""
 
 
 class ChapterService:
@@ -53,3 +62,58 @@ class ChapterService:
         )
 
         return chapter
+
+    async def add_chapters(
+        self,
+        user_id: uuid.UUID,
+        book_id: uuid.UUID,
+        chapters: list[BookChapterCreate],
+    ) -> None:
+        """Добавить главы к книге и залогировать операцию."""
+        book = await self._book_repo.ensure_exists(book_id)
+
+        if not chapters:
+            raise EmptyChapterListError
+
+        chapter_numbers = [chapter.chapter for chapter in chapters]
+        if len(chapter_numbers) != len(set(chapter_numbers)):
+            raise DuplicateChapterNumbersInRequestError
+
+        created_count = await self._chapter_repo.create_chapters(
+            book_id=book.id,
+            data=chapters,
+        )
+
+        await self._log_repo.log_from_dto(
+            LogCreate(
+                user_id=user_id,
+                action="add_book_chapters",
+                entity="book_chapters",
+                entity_id=book.id,
+                details=f"Добавлено глав: {created_count} для книги '{book.title}' (id={book.id})",
+            )
+        )
+
+    async def update_chapter(
+        self,
+        user_id: uuid.UUID,
+        book_id: uuid.UUID,
+        chapter_num: int,
+        payload: BookChapterUpdate,
+    ) -> None:
+        """Обновить главу по номеру и залогировать изменение."""
+        chapter = await self._chapter_repo.update_chapter_by_number(
+            book_id=book_id,
+            chapter_num=chapter_num,
+            data=payload,
+        )
+
+        await self._log_repo.log_from_dto(
+            LogCreate(
+                user_id=user_id,
+                action="update_chapter",
+                entity="book_chapters",
+                entity_id=chapter.id,
+                details=f"Обновлена глава #{chapter_num} книги #{book_id}",
+            )
+        )
