@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status, WebSocket, WebSocketExceptio
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from src.DB.Repository import User
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 from src.schemas.users import UserRead
 from src.DB.Repository.UserRepository.user_repository import UserRepository
 from src.api.dependencies import get_user_repo

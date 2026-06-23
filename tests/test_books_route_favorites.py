@@ -19,7 +19,7 @@ from src.DB.Repository.BookRepository.book_repository import (
     BOOK_BINARY_CHUNK_SIZE,
     BookNotFoundError,
 )
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 from src.schemas.users import UserRead
 from src.application.services.book_file_service import BookFileNotFoundInServiceError
 

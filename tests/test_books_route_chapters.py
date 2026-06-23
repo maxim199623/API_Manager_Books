@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 from src.schemas.users import UserRead
 from src.api.route import book_chapters as books_route
 from src.application.services.chapter_service import (

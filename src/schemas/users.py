@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 
 
 class UserBase(BaseModel):

@@ -7,7 +7,7 @@ import pytest_asyncio
 from src.core.config import SettingsManager
 from src.DB.Manager.manager import AsyncDBManager
 from src.DB.base import Base
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 from src.DB.Repository.UserRepository.user_repository import UserRepository, EmailAlreadyExistsError, UserNotFoundError
 from src.schemas.users import UserCreate
 from src.security.passwords import verify_password

@@ -297,7 +297,7 @@ class TestBookRepository:
     ):
         from src.DB.Repository.BookChapterRepository.ORM import BookChapter
         from src.DB.Repository.LogRepository.ORM import LogEntry
-        from src.DB.Repository.UserRepository.Enums import UserRole
+        from src.schemas.enums import UserRole
         from src.DB.Repository.UserRepository.ORM import User
 
         user = User(

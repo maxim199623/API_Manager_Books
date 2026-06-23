@@ -11,7 +11,7 @@ from src.DB.base import Base
 from src.schemas.books import BookCreate
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 from src.schemas.users import UserCreate
 from src.DB.Repository.UserRepository.user_repository import UserRepository
 

@@ -6,7 +6,7 @@ from sqlalchemy import String, DateTime, func, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.DB.base import Base
-from  src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 
 from sqlalchemy.types import Uuid
 

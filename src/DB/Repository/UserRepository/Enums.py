@@ -1,6 +1,3 @@
-from enum import Enum
+from src.schemas.enums import UserRole
 
-
-class UserRole(str, Enum):
-    ADMIN = "admin"
-    USER = "user"
+__all__ = ["UserRole"]

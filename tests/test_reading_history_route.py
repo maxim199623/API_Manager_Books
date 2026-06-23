@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.DB.Repository.UserRepository.Enums import UserRole
+from src.schemas.enums import UserRole
 from src.schemas.users import UserRead
 
 
