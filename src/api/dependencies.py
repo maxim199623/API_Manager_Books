@@ -14,6 +14,7 @@ from src.application.services.book_file_service import BookFileService
 from src.application.services.chapter_service import ChapterService
 from src.application.services.favorite_service import FavoriteService
 from src.application.services.reading_history_service import ReadingHistoryService
+from src.application.services.settings_service import SettingsService
 from src.application.services.user_service import UserService
 from src.core.config import SettingsManager
 
@@ -136,4 +137,11 @@ async def get_reading_history_service(
 def get_settings_manager(request: Request) -> SettingsManager:
     """Получаем settings_manager"""
     return request.app.state.settings_manager
+
+
+def get_settings_service(
+    settings_manager: SettingsManager = Depends(get_settings_manager),
+) -> SettingsService:
+    """Получаем SettingsService"""
+    return SettingsService(settings_manager=settings_manager)
 

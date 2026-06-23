@@ -135,6 +135,10 @@ class SettingsManager:
         if name is not None:
             pg.name = name
 
+    def replace_settings(self, settings: AppSettings) -> None:
+        """Атомарно заменить in-memory модель настроек."""
+        self._settings = settings
+
     # ---------- сохранение обратно в ini ----------
 
     def save(self) -> None:
