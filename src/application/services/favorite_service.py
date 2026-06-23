@@ -1,9 +1,25 @@
 import uuid
+from typing import Protocol
 
-from src.DB.Repository.BookRepository.book_repository import BookRepository
-from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
 from src.schemas.logs import LogCreate
-from src.DB.Repository.LogRepository.log_repository import LogRepository
+
+
+class BookLookup(Protocol):
+    async def ensure_exists(self, book_id: uuid.UUID) -> None:
+        ...
+
+
+class FavoriteBooks(Protocol):
+    async def add_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        ...
+
+    async def remove_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        ...
+
+
+class LogWriter(Protocol):
+    async def log_from_dto(self, payload: LogCreate) -> None:
+        ...
 
 
 class FavoriteService:
@@ -11,9 +27,9 @@ class FavoriteService:
 
     def __init__(
         self,
-        book_repo: BookRepository,
-        favorite_book_repo: FavoriteBookRepository,
-        log_repo: LogRepository,
+        book_repo: BookLookup,
+        favorite_book_repo: FavoriteBooks,
+        log_repo: LogWriter,
     ):
         self._book_repo = book_repo
         self._favorite_book_repo = favorite_book_repo
