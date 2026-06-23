@@ -178,6 +178,50 @@ def test_book_file_service_does_not_import_concrete_repository_classes() -> None
     assert offenders == []
 
 
+def test_chapter_service_does_not_import_concrete_repository_classes() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    path = project_root / "src" / "application" / "services" / "chapter_service.py"
+    forbidden_names = {"BookRepository", "BookChapterRepository", "LogRepository"}
+    offenders: list[str] = []
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+
+        module = node.module or ""
+        if not module.startswith("src.DB.Repository."):
+            continue
+
+        imported_names = {alias.name for alias in node.names}
+        if forbidden_names & imported_names:
+            offenders.append(f"{path.relative_to(project_root)}:{node.lineno}")
+
+    assert offenders == []
+
+
+def test_reading_history_service_does_not_import_concrete_repository_classes() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    path = project_root / "src" / "application" / "services" / "reading_history_service.py"
+    forbidden_names = {"BookRepository", "BookChapterRepository", "LogRepository"}
+    offenders: list[str] = []
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+
+        module = node.module or ""
+        if not module.startswith("src.DB.Repository."):
+            continue
+
+        imported_names = {alias.name for alias in node.names}
+        if forbidden_names & imported_names:
+            offenders.append(f"{path.relative_to(project_root)}:{node.lineno}")
+
+    assert offenders == []
+
+
 def test_user_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / "application" / "services" / "user_service.py"

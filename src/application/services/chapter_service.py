@@ -1,10 +1,57 @@
 import uuid
+from typing import Protocol, Sequence
 
-from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
 from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
-from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.schemas.logs import LogCreate
-from src.DB.Repository.LogRepository.log_repository import LogRepository
+
+
+class BookRecord(Protocol):
+    id: uuid.UUID
+    title: str
+
+
+class ChapterRecord(Protocol):
+    id: uuid.UUID
+
+
+class BookLookup(Protocol):
+    async def ensure_exists(self, book_id: uuid.UUID) -> BookRecord:
+        ...
+
+
+class ChapterStorage(Protocol):
+    async def list_chapter_headers(self, book_id: uuid.UUID) -> Sequence[object]:
+        ...
+
+    async def count_chapters(self, book_id: uuid.UUID) -> int:
+        ...
+
+    async def ensure_exists_by_book_and_number(
+        self,
+        book_id: uuid.UUID,
+        chapter_num: int,
+    ) -> ChapterRecord:
+        ...
+
+    async def create_chapters(
+        self,
+        book_id: uuid.UUID,
+        data: list[BookChapterCreate],
+    ) -> int:
+        ...
+
+    async def update_chapter_by_number(
+        self,
+        book_id: uuid.UUID,
+        chapter_num: int,
+        data: BookChapterUpdate,
+    ) -> ChapterRecord:
+        ...
+
+
+class LogWriter(Protocol):
+    async def log_from_dto(self, payload: LogCreate) -> None:
+        ...
 
 
 class EmptyChapterListError(Exception):
@@ -20,9 +67,9 @@ class ChapterService:
 
     def __init__(
         self,
-        book_repo: BookRepository,
-        chapter_repo: BookChapterRepository,
-        log_repo: LogRepository,
+        book_repo: BookLookup,
+        chapter_repo: ChapterStorage,
+        log_repo: LogWriter,
     ):
         self._book_repo = book_repo
         self._chapter_repo = chapter_repo
