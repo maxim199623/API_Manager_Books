@@ -26,7 +26,7 @@ class Test_load_settings:
     def test_first_start(self,config_path,  make_manager):
         settings = make_manager().settings
         assert  settings.database.backend == "sqlite"
-        assert  settings.database.echo == True
+        assert  settings.database.echo is False
         assert  settings.database.sqlite.path == "app.db"
         # -----------
         assert  settings.database.postgres.host == "localhost"
@@ -70,18 +70,18 @@ class Test_load_settings:
         Меняем флаг echo, сохраняем, проверяем, что значение сохранилось.
         """
         manager = make_manager()
-        # по умолчанию в наших дефолтах echo = True
-        assert manager.db.echo is True
+        # по умолчанию в наших дефолтах echo = False
+        assert manager.db.echo is False
 
-        manager.set_echo(False)
+        manager.set_echo(True)
         manager.save()
 
         manager2 = make_manager()
-        assert manager2.db.echo is False
+        assert manager2.db.echo is True
 
         parser = ConfigParser()
         parser.read(config_path, encoding="utf-8")
-        assert parser["database"]["echo"].lower() == "false"
+        assert parser["database"]["echo"].lower() == "true"
 
     def test_change_sqlite_path_and_persist(self, make_manager, config_path: Path):
         """
