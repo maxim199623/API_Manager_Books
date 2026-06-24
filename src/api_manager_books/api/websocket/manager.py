@@ -4,22 +4,28 @@ from fastapi import WebSocket
 
 
 class ConnectionManager:
+    """Хранит активные WebSocket-подключения."""
+
     def __init__(self):
+        """Создает пустое хранилище подключений."""
         self.active_connections: dict[uuid.UUID, set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, user_id: uuid.UUID):
+        """Регистрирует подключение пользователя."""
         await websocket.accept()
         if user_id not in self.active_connections:
             self.active_connections[user_id] = set()
         self.active_connections[user_id].add(websocket)
 
     def disconnect(self, websocket: WebSocket, user_id: uuid.UUID):
+        """Удаляет подключение пользователя."""
         if user_id in self.active_connections:
             self.active_connections[user_id].discard(websocket)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
 
     async def send_to_user(self, user_id: uuid.UUID, message: dict):
+        """Отправляет сообщение пользователю."""
         if user_id in self.active_connections:
             for ws in list(self.active_connections[user_id]):
                 print(ws)

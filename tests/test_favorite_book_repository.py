@@ -16,26 +16,31 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def user_repo(repository_memory_session) -> UserRepository:
+    """Готовит репозиторий пользователей."""
     return UserRepository(repository_memory_session)
 
 
 @pytest_asyncio.fixture
 async def book_repo(repository_memory_session) -> BookRepository:
+    """Готовит репозиторий книг."""
     return BookRepository(repository_memory_session)
 
 
 @pytest_asyncio.fixture
 async def favorite_repo(repository_memory_session) -> FavoriteBookRepository:
+    """Готовит репозиторий избранного."""
     return FavoriteBookRepository(repository_memory_session)
 
 
 class TestFavoriteBookRepository:
+    """Проверяет репозиторий избранных книг."""
     async def test_add_favorite_and_duplicate_returns_false(
         self,
         user_repo: UserRepository,
         book_repo: BookRepository,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет добавление избранного и дубликат."""
         user = await user_repo.create_user(
             UserCreate(
                 email="favorite-user@example.com",
@@ -98,9 +103,11 @@ class TestFavoriteBookRepository:
         monkeypatch: pytest.MonkeyPatch,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет конкурентный дубликат избранного."""
         calls = 0
 
         async def fake_get_by_user_and_book(user_id, book_id):
+            """Имитирует поиск избранного по пользователю и книге."""
             nonlocal calls
             calls += 1
             if calls == 1:
@@ -108,9 +115,11 @@ class TestFavoriteBookRepository:
             return object()
 
         async def fake_flush():
+            """Имитирует сброс сессии."""
             raise IntegrityError("insert", {}, Exception("unique constraint failed"))
 
         def fake_add(_favorite):
+            """Имитирует добавление в сессию."""
             return None
 
         monkeypatch.setattr(
@@ -129,6 +138,7 @@ class TestFavoriteBookRepository:
         favorite_repo: FavoriteBookRepository,
         repository_memory_session,
     ):
+        """Проверяет сохранение ошибок внешнего ключа."""
         with pytest.raises(IntegrityError):
             await favorite_repo.add_favorite(uuid.uuid4(), uuid.uuid4())
         await repository_memory_session.rollback()
@@ -139,6 +149,7 @@ class TestFavoriteBookRepository:
         book_repo: BookRepository,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет список избранное книгу ID возвращает подмножество."""
         user = await user_repo.create_user(
             UserCreate(
                 email="subset-user@example.com",
@@ -198,6 +209,7 @@ class TestFavoriteBookRepository:
         book_repo: BookRepository,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет remove избранное is идемпотентность."""
         user = await user_repo.create_user(
             UserCreate(
                 email="remove-user@example.com",
@@ -233,6 +245,7 @@ class TestFavoriteBookRepository:
         book_repo: BookRepository,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет каскадное удаление избранного при удалении книги."""
         user = await user_repo.create_user(
             UserCreate(
                 email="cascade-book-user@example.com",
@@ -265,6 +278,7 @@ class TestFavoriteBookRepository:
         book_repo: BookRepository,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет каскадное удаление избранного при удалении пользователя."""
         user = await user_repo.create_user(
             UserCreate(
                 email="cascade-user@example.com",
@@ -297,6 +311,7 @@ class TestFavoriteBookRepository:
         book_repo: BookRepository,
         favorite_repo: FavoriteBookRepository,
     ):
+        """Проверяет каскадное удаление избранного при удалении книги."""
         other_user = await user_repo.create_user(
             UserCreate(
                 email="other-user@example.com",

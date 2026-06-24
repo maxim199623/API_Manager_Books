@@ -8,7 +8,10 @@ from api_manager_books.db.Repository.FavoriteBookRepository.ORM import FavoriteB
 
 
 class FavoriteBookRepository:
+    """Репозиторий избранных книг."""
+
     def __init__(self, session: AsyncSession):
+        """Инициализировать репозиторий избранного."""
         self._session = session
 
     async def get_by_user_and_book(
@@ -16,6 +19,7 @@ class FavoriteBookRepository:
         user_id: uuid.UUID,
         book_id: uuid.UUID,
     ) -> FavoriteBook | None:
+        """Получить избранную книгу пользователя."""
         stmt = select(FavoriteBook).where(
             FavoriteBook.user_id == user_id,
             FavoriteBook.book_id == book_id,
@@ -24,6 +28,7 @@ class FavoriteBookRepository:
         return res.scalar_one_or_none()
 
     async def add_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        """Добавить книгу в избранное."""
         existing = await self.get_by_user_and_book(user_id, book_id)
         if existing is not None:
             return False
@@ -43,6 +48,7 @@ class FavoriteBookRepository:
         return True
 
     async def remove_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        """Удалить книгу из избранного."""
         stmt = delete(FavoriteBook).where(
             FavoriteBook.user_id == user_id,
             FavoriteBook.book_id == book_id,
@@ -52,6 +58,7 @@ class FavoriteBookRepository:
         return deleted_id is not None
 
     async def is_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        """Проверить, находится ли книга в избранном."""
         favorite = await self.get_by_user_and_book(user_id, book_id)
         return favorite is not None
 
@@ -60,6 +67,7 @@ class FavoriteBookRepository:
         user_id: uuid.UUID,
         book_ids: list[uuid.UUID],
     ) -> set[uuid.UUID]:
+        """Получить ID избранных книг из списка."""
         if not book_ids:
             return set()
 

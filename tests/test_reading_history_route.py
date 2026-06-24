@@ -11,7 +11,9 @@ from api_manager_books.schemas.users import UserRead
 
 
 class FakeReadingHistoryService:
+    """Фейковый сервис истории чтения."""
     def __init__(self):
+        """Инициализирует тестовый объект."""
         self.chapters = []
         self.count = 0
         self.count_error = None
@@ -27,20 +29,24 @@ class FakeReadingHistoryService:
         offset,
         limit,
     ):
+        """Имитирует список прочитанных глав."""
         self.list_calls.append((user_id, book_id, offset, limit))
         return self.chapters
 
     async def count_read_chapters(self, *, user_id, book_id):
+        """Имитирует подсчет прочитанных глав."""
         self.count_calls.append((user_id, book_id))
         if self.count_error is not None:
             raise self.count_error
         return self.count
 
     async def clear_read_history_for_book(self, *, user_id, book_id):
+        """Имитирует очистку истории чтения книги."""
         self.clear_calls.append((user_id, book_id))
 
 
 def make_user() -> UserRead:
+    """Создает тестового пользователя."""
     return UserRead(
         id=uuid.uuid4(),
         email="reader@example.com",
@@ -52,6 +58,7 @@ def make_user() -> UserRead:
 
 @pytest.fixture
 def reading_history_route():
+    """Возвращает роутер истории чтения."""
     try:
         return importlib.import_module("api_manager_books.api.route.reading_history")
     except ModuleNotFoundError as exc:
@@ -59,6 +66,7 @@ def reading_history_route():
 
 
 def get_route(path: str, method: str):
+    """Ищет тестируемый роут."""
     return next(
         (
             route
@@ -70,6 +78,7 @@ def get_route(path: str, method: str):
 
 
 def test_reading_history_routes_are_registered_on_split_router(reading_history_route):
+    """Проверяет регистрацию в разделенном роутере."""
     assert get_route("/books/chapters/read", "GET") is not None
     assert get_route("/books/{book_id}/chapters/read/count", "GET") is not None
     assert get_route("/books/{book_id}/history", "DELETE") is not None
@@ -78,6 +87,7 @@ def test_reading_history_routes_are_registered_on_split_router(reading_history_r
 
 @pytest.mark.asyncio
 async def test_get_read_chapters_returns_service_result(reading_history_route):
+    """Проверяет возврат прочитанных глав из сервиса."""
     current_user = make_user()
     service = FakeReadingHistoryService()
     service.chapters = [2, 5]
@@ -96,6 +106,7 @@ async def test_get_read_chapters_returns_service_result(reading_history_route):
 
 @pytest.mark.asyncio
 async def test_get_read_chapters_passes_book_filter_to_service(reading_history_route):
+    """Проверяет передачу фильтра книги."""
     current_user = make_user()
     book_id = uuid.uuid4()
     service = FakeReadingHistoryService()
@@ -114,6 +125,7 @@ async def test_get_read_chapters_passes_book_filter_to_service(reading_history_r
 
 @pytest.mark.asyncio
 async def test_get_read_chapters_count_returns_service_count(reading_history_route):
+    """Проверяет получает прочитанные главы считает возвращает сервис считает."""
     current_user = make_user()
     book_id = uuid.uuid4()
     service = FakeReadingHistoryService()
@@ -131,6 +143,7 @@ async def test_get_read_chapters_count_returns_service_count(reading_history_rou
 
 @pytest.mark.asyncio
 async def test_get_read_chapters_count_returns_404_when_book_is_missing(reading_history_route):
+    """Проверяет возврат 404 при ошибке."""
     current_user = make_user()
     book_id = uuid.uuid4()
     service = FakeReadingHistoryService()
@@ -150,6 +163,7 @@ async def test_get_read_chapters_count_returns_404_when_book_is_missing(reading_
 
 @pytest.mark.asyncio
 async def test_clear_read_history_for_book_clears_by_user_and_book(reading_history_route):
+    """Проверяет работу с пользователем и книгой."""
     current_user = make_user()
     book_id = uuid.uuid4()
     service = FakeReadingHistoryService()

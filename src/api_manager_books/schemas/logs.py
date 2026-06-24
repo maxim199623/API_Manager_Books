@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class LogBase(BaseModel):
+    """Базовые поля записи лога."""
+
     user_id: uuid.UUID | None = None
     action: str
     entity: str | None = None
@@ -18,6 +20,8 @@ class LogCreate(LogBase):
 
 
 class LogRead(LogBase):
+    """Представление записи лога."""
+
     id: uuid.UUID
     created_at: datetime
 

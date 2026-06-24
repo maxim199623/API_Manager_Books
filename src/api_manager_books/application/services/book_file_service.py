@@ -16,15 +16,21 @@ class SessionManager(Protocol):
 
 
 class BookFileRecord(Protocol):
+    """Книга с данными для файловых операций."""
+
     id: uuid.UUID
     title: str
 
 
 class BookFileStorage(Protocol):
+    """Хранилище файловых данных книги."""
+
     async def get_cover_meta(self, book_id: uuid.UUID) -> Any | None:
+        """Возвращает метаданные обложки книги."""
         ...
 
     async def get_file_meta(self, book_id: uuid.UUID) -> Any | None:
+        """Возвращает метаданные файла книги."""
         ...
 
     async def update_book(
@@ -35,19 +41,27 @@ class BookFileStorage(Protocol):
         cover_chunks: AsyncIterable[bytes] | None = None,
         file_chunks: AsyncIterable[bytes] | None = None,
     ) -> BookFileRecord:
+        """Обновляет книгу и связанные бинарные данные."""
         ...
 
 
 class BookFileStreamer(Protocol):
+    """Источник stream-данных книги."""
+
     async def iter_cover_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        """Возвращает chunks обложки книги."""
         ...
 
     async def iter_file_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        """Возвращает chunks файла книги."""
         ...
 
 
 class LogWriter(Protocol):
+    """Хранилище логов действий."""
+
     async def log_from_dto(self, payload: LogCreate) -> Any:
+        """Записывает лог из DTO."""
         ...
 
 
@@ -56,6 +70,7 @@ class BookFileNotFoundInServiceError(Exception):
 
 
 def _is_book_not_found_error(exc: Exception) -> bool:
+    """Проверяет ошибку отсутствующей книги."""
     return exc.__class__.__name__ == "BookNotFoundError"
 
 
@@ -69,6 +84,7 @@ class BookFileService:
         session_manager: SessionManager,
         book_repo_factory: Callable[[Any], BookFileStreamer],
     ):
+        """Инициализирует зависимости файлового сервиса."""
         self._book_repo = book_repo
         self._log_repo = log_repo
         self._session_manager = session_manager

@@ -14,12 +14,14 @@ from api_manager_books.db.Repository.BookRepository.book_repository import BookN
 
 @dataclass(frozen=True)
 class FakeBinaryMeta:
+    """Тестовые метаданные бинарного файла."""
     content_type: str | None
     file_name: str | None
     size: int
 
 
 class FakeBookRepo:
+    """Тестовый репозиторий книг."""
     def __init__(
         self,
         *,
@@ -30,6 +32,7 @@ class FakeBookRepo:
         updated_book=None,
         update_error: Exception | None = None,
     ):
+        """Инициализирует тестовый объект."""
         self.cover_meta = cover_meta
         self.file_meta = file_meta
         self.cover_chunks = cover_chunks or []
@@ -43,24 +46,29 @@ class FakeBookRepo:
         self.file_chunk_calls: list[uuid.UUID] = []
 
     async def get_cover_meta(self, book_id: uuid.UUID):
+        """Имитирует получение метаданных обложки."""
         self.cover_meta_calls.append(book_id)
         return self.cover_meta
 
     async def get_file_meta(self, book_id: uuid.UUID):
+        """Имитирует получение метаданных файла книги."""
         self.file_meta_calls.append(book_id)
         return self.file_meta
 
     async def iter_cover_chunks(self, book_id: uuid.UUID):
+        """Имитирует поток чанков обложки."""
         self.cover_chunk_calls.append(book_id)
         for chunk in self.cover_chunks:
             yield chunk
 
     async def iter_file_chunks(self, book_id: uuid.UUID):
+        """Имитирует поток чанков файла книги."""
         self.file_chunk_calls.append(book_id)
         for chunk in self.file_chunks:
             yield chunk
 
     async def update_book(self, book_id, payload, *, cover_chunks=None, file_chunks=None):
+        """Имитирует обновление книги."""
         cover_data = [chunk async for chunk in cover_chunks] if cover_chunks is not None else None
         file_data = [chunk async for chunk in file_chunks] if file_chunks is not None else None
         self.update_calls.append(
@@ -77,20 +85,26 @@ class FakeBookRepo:
 
 
 class FakeLogRepo:
+    """Тестовый репозиторий логов."""
     def __init__(self):
+        """Инициализирует тестовый объект."""
         self.entries = []
 
     async def log_from_dto(self, payload):
+        """Сохраняет тестовую запись лога."""
         self.entries.append(payload)
 
 
 class FakeSessionManager:
+    """Тестовый менеджер сессий."""
     def __init__(self):
+        """Инициализирует тестовый объект."""
         self.opened = []
         self.closed = []
 
     @asynccontextmanager
     async def session(self):
+        """Открывает тестовый контекст сессии."""
         session = object()
         self.opened.append(session)
         try:
@@ -100,16 +114,20 @@ class FakeSessionManager:
 
 
 class FakeBookRepoFactory:
+    """Тестовая фабрика репозиториев книг."""
     def __init__(self, repo: FakeBookRepo):
+        """Инициализирует тестовый объект."""
         self.repo = repo
         self.sessions = []
 
     def __call__(self, session):
+        """Возвращает репозиторий для тестовой сессии."""
         self.sessions.append(session)
         return self.repo
 
 
 async def iter_chunks(chunks: list[bytes]):
+    """Возвращает тестовый поток чанков."""
     for chunk in chunks:
         yield chunk
 
@@ -121,6 +139,7 @@ def make_service(
     session_manager: FakeSessionManager | None = None,
     book_repo_factory: FakeBookRepoFactory | None = None,
 ) -> BookFileService:
+    """Создает сервис с тестовыми зависимостями."""
     return BookFileService(
         book_repo=book_repo,
         log_repo=log_repo or FakeLogRepo(),
@@ -131,6 +150,7 @@ def make_service(
 
 @pytest.mark.asyncio
 async def test_update_cover_logs_and_passes_chunks():
+    """Проверяет логирование обложки и передачу чанков."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     updated_book = SimpleNamespace(id=book_id, title="Stored title")
@@ -162,6 +182,7 @@ async def test_update_cover_logs_and_passes_chunks():
 
 @pytest.mark.asyncio
 async def test_update_file_logs_filename_mime_and_passes_chunks():
+    """Проверяет логирование файла и передачу чанков."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     updated_book = SimpleNamespace(id=book_id, title="Stored title")
@@ -196,6 +217,7 @@ async def test_update_file_logs_filename_mime_and_passes_chunks():
 
 @pytest.mark.asyncio
 async def test_update_missing_book_maps_to_service_error_without_log():
+    """Проверяет ошибку сервиса без записи лога для пропавшей книги."""
     book_repo = FakeBookRepo(update_error=BookNotFoundError())
     log_repo = FakeLogRepo()
     service = make_service(book_repo, log_repo=log_repo)
@@ -213,6 +235,7 @@ async def test_update_missing_book_maps_to_service_error_without_log():
 
 @pytest.mark.asyncio
 async def test_cover_and_file_meta_return_none_for_missing_binary():
+    """Проверяет отсутствие метаданных для пропавшего файла."""
     book_id = uuid.uuid4()
     book_repo = FakeBookRepo()
     service = make_service(book_repo)
@@ -225,6 +248,7 @@ async def test_cover_and_file_meta_return_none_for_missing_binary():
 
 @pytest.mark.asyncio
 async def test_streaming_iter_opens_session_and_yields_chunks():
+    """Проверяет потоковое чтение через открытую сессию."""
     book_id = uuid.uuid4()
     stream_repo = FakeBookRepo(cover_chunks=[b"ab", b"cd"])
     session_manager = FakeSessionManager()

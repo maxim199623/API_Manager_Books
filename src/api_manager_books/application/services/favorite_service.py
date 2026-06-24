@@ -5,20 +5,30 @@ from api_manager_books.schemas.logs import LogCreate
 
 
 class BookLookup(Protocol):
+    """Хранилище проверки книг."""
+
     async def ensure_exists(self, book_id: uuid.UUID) -> None:
+        """Проверяет существование книги."""
         ...
 
 
 class FavoriteBooks(Protocol):
+    """Хранилище избранных книг."""
+
     async def add_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        """Добавляет книгу в избранное пользователя."""
         ...
 
     async def remove_favorite(self, user_id: uuid.UUID, book_id: uuid.UUID) -> bool:
+        """Удаляет книгу из избранного пользователя."""
         ...
 
 
 class LogWriter(Protocol):
+    """Хранилище логов действий."""
+
     async def log_from_dto(self, payload: LogCreate) -> None:
+        """Записывает лог из DTO."""
         ...
 
 
@@ -31,6 +41,7 @@ class FavoriteService:
         favorite_book_repo: FavoriteBooks,
         log_repo: LogWriter,
     ):
+        """Инициализирует зависимости сервиса избранного."""
         self._book_repo = book_repo
         self._favorite_book_repo = favorite_book_repo
         self._log_repo = log_repo

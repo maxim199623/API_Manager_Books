@@ -8,6 +8,8 @@ from api_manager_books.db.base import Base
 
 
 class FavoriteBook(Base):
+    """ORM-модель избранной книги пользователя."""
+
     __tablename__ = "favorite_books"
 
     id: Mapped[uuid.UUID] = mapped_column(

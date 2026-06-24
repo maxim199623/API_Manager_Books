@@ -19,6 +19,7 @@ LEGACY_SHEMS_MODULES = (
 
 
 def safe_find_spec(module_name: str):
+    """Безопасно ищет спецификацию модуля."""
     try:
         return importlib.util.find_spec(module_name)
     except ModuleNotFoundError:
@@ -26,6 +27,7 @@ def safe_find_spec(module_name: str):
 
 
 def test_runtime_and_tests_do_not_import_legacy_src_namespace() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     scan_paths = [project_root / "main.py"]
     scan_paths.extend((project_root / "src").rglob("*.py"))
@@ -50,6 +52,7 @@ def test_runtime_and_tests_do_not_import_legacy_src_namespace() -> None:
 
 
 def test_runtime_and_tests_do_not_reference_legacy_source_paths() -> None:
+    """Проверяет отсутствие запрещенных ссылок."""
     project_root = Path(__file__).resolve().parents[1]
     scan_paths = [project_root / "main.py"]
     scan_paths.extend((project_root / "src").rglob("*.py"))
@@ -78,6 +81,7 @@ def test_runtime_and_tests_do_not_reference_legacy_source_paths() -> None:
 
 
 def test_typo_dependencices_module_is_forbidden() -> None:
+    """Проверяет запрет устаревшего модуля."""
     importlib.invalidate_caches()
 
     forbidden_module = ".".join(("src", "api", "Dependencices"))
@@ -86,6 +90,7 @@ def test_typo_dependencices_module_is_forbidden() -> None:
 
 
 def test_pydantic_schemas_are_available_from_schemas_package() -> None:
+    """Проверяет доступность схем."""
     importlib.invalidate_caches()
 
     books = importlib.import_module("api_manager_books.schemas.books")
@@ -100,6 +105,7 @@ def test_pydantic_schemas_are_available_from_schemas_package() -> None:
 
 
 def test_legacy_shems_modules_are_removed() -> None:
+    """Проверяет удаление устаревших модулей."""
     importlib.invalidate_caches()
 
     source_root = Path(__file__).resolve().parents[1] / "src"
@@ -118,6 +124,7 @@ def test_legacy_shems_modules_are_removed() -> None:
 
 
 def test_legacy_user_role_enums_module_is_removed() -> None:
+    """Проверяет устаревшие пользователя роль enums модуль is удалены."""
     importlib.invalidate_caches()
 
     project_root = Path(__file__).resolve().parents[1]
@@ -128,6 +135,7 @@ def test_legacy_user_role_enums_module_is_removed() -> None:
 
 
 def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     scan_roots = (project_root / "src", project_root / "tests")
     offenders: list[str] = []
@@ -174,6 +182,7 @@ def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
 
 
 def test_favorite_service_does_not_import_concrete_repository_classes() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "favorite_service.py"
     forbidden_names = {"BookRepository", "FavoriteBookRepository", "LogRepository"}
@@ -196,6 +205,7 @@ def test_favorite_service_does_not_import_concrete_repository_classes() -> None:
 
 
 def test_book_service_does_not_import_concrete_repository_classes() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "book_service.py"
     forbidden_names = {"BookRepository", "FavoriteBookRepository", "LogRepository"}
@@ -218,6 +228,7 @@ def test_book_service_does_not_import_concrete_repository_classes() -> None:
 
 
 def test_book_file_service_does_not_import_concrete_repository_classes() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "book_file_service.py"
     forbidden_names = {"BookRepository", "LogRepository"}
@@ -240,6 +251,7 @@ def test_book_file_service_does_not_import_concrete_repository_classes() -> None
 
 
 def test_chapter_service_does_not_import_concrete_repository_classes() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "chapter_service.py"
     forbidden_names = {"BookRepository", "BookChapterRepository", "LogRepository"}
@@ -262,6 +274,7 @@ def test_chapter_service_does_not_import_concrete_repository_classes() -> None:
 
 
 def test_reading_history_service_does_not_import_concrete_repository_classes() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "reading_history_service.py"
     forbidden_names = {"BookRepository", "BookChapterRepository", "LogRepository"}
@@ -284,6 +297,7 @@ def test_reading_history_service_does_not_import_concrete_repository_classes() -
 
 
 def test_user_service_does_not_import_concrete_repository_classes() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "user_service.py"
     forbidden_names = {"UserRepository", "LogRepository"}
@@ -306,6 +320,7 @@ def test_user_service_does_not_import_concrete_repository_classes() -> None:
 
 
 def test_settings_service_does_not_import_concrete_settings_infrastructure() -> None:
+    """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]
     path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "settings_service.py"
     forbidden_modules = {

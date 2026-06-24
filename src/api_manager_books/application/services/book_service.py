@@ -15,13 +15,18 @@ SortDirection = Literal["asc", "desc"]
 
 
 class BookRecord(Protocol):
+    """Книга для сервисных сценариев."""
+
     id: uuid.UUID
     title: str
     author: str | None
 
 
 class BookStorage(Protocol):
+    """Хранилище книг."""
+
     async def get_by_title_author(self, title: str, author: str | None) -> BookRecord | None:
+        """Возвращает книгу по названию и автору."""
         ...
 
     async def create_book(
@@ -31,6 +36,7 @@ class BookStorage(Protocol):
         cover_chunks: AsyncIterable[bytes] | None = None,
         file_chunks: AsyncIterable[bytes] | None = None,
     ) -> BookRecord:
+        """Создает книгу с опциональными файлами."""
         ...
 
     async def list_books(
@@ -44,26 +50,35 @@ class BookStorage(Protocol):
         sort_dir: SortDirection = "desc",
         user_id: uuid.UUID,
     ) -> Sequence[BookRecord]:
+        """Возвращает список книг по фильтрам."""
         ...
 
     async def update_book(self, book_id: uuid.UUID, data: BookUpdate) -> BookRecord:
+        """Обновляет книгу по идентификатору."""
         ...
 
     async def delete_book(self, book_id: uuid.UUID) -> bool:
+        """Удаляет книгу по идентификатору."""
         ...
 
 
 class FavoriteBookLookup(Protocol):
+    """Хранилище признаков избранных книг."""
+
     async def list_favorite_book_ids(
         self,
         user_id: uuid.UUID,
         book_ids: list[uuid.UUID],
     ) -> set[uuid.UUID]:
+        """Возвращает ID избранных книг пользователя."""
         ...
 
 
 class LogWriter(Protocol):
+    """Хранилище логов действий."""
+
     async def log_from_dto(self, payload: LogCreate) -> Any:
+        """Записывает лог из DTO."""
         ...
 
     async def log_action(
@@ -76,6 +91,7 @@ class LogWriter(Protocol):
         details: str | None = None,
         **extra_fields: Any,
     ) -> Any:
+        """Записывает лог действия."""
         ...
 
 
@@ -95,6 +111,7 @@ class BookNotFoundInServiceError(Exception):
 
 
 def _is_book_not_found_error(exc: Exception) -> bool:
+    """Проверяет ошибку отсутствующей книги."""
     return exc.__class__.__name__ == "BookNotFoundError"
 
 
@@ -108,6 +125,7 @@ class BookService:
         log_repo: LogWriter,
         notification_manager: NotificationManager,
     ):
+        """Инициализирует зависимости сервиса книг."""
         self._book_repo = book_repo
         self._favorite_book_repo = favorite_book_repo
         self._log_repo = log_repo

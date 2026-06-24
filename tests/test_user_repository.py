@@ -16,6 +16,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def user_repo(repository_session) -> UserRepository:
+    """Готовит репозиторий пользователей."""
     return UserRepository(repository_session)
 
 
@@ -23,7 +24,9 @@ async def user_repo(repository_session) -> UserRepository:
 
 class TestUserRepository:
 
+    """Проверяет репозиторий пользователей."""
     async def test_create_and_get_by_id(self, user_repo: UserRepository):
+        """Проверяет создание и получение по ID."""
         password = "pass-1"
         created = await user_repo.create_user(
             UserCreate(
@@ -46,6 +49,7 @@ class TestUserRepository:
         assert fetched.role == UserRole.USER
 
     async def test_get_by_email(self, user_repo: UserRepository):
+        """Проверяет получает by email."""
         await user_repo.create_user(
             UserCreate(
                 email="user2@example.com",
@@ -65,6 +69,7 @@ class TestUserRepository:
     async def test_list_users(self, user_repo: UserRepository):
         # чисто для надёжности — можно подчистить таблицу (если тесты не изолированы)
         # но в норме схема пустая после drop/create
+        """Проверяет список пользователей."""
         users_data = [
             UserCreate(email="u1@mail.com", password="pass-u1", role=UserRole.USER),
             UserCreate(email="u2@mail.com", password="pass-u2", role=UserRole.ADMIN),
@@ -78,6 +83,7 @@ class TestUserRepository:
         assert emails == {"u1@mail.com", "u2@mail.com", "u3@mail.com"}
 
     async def test_delete_user(self, user_repo: UserRepository):
+        """Проверяет удаляет пользователя."""
         u = await user_repo.create_user(
             UserCreate(
                 email="todelete@mail.com",
@@ -95,6 +101,7 @@ class TestUserRepository:
         assert user is None
 
     async def test_ensure_exists_success(self, user_repo: UserRepository):
+        """Проверяет ensure exists успех."""
         u = await user_repo.create_user(
             UserCreate(
                 email="exists@mail.com",
@@ -106,10 +113,12 @@ class TestUserRepository:
         assert found.id == u.id
 
     async def test_ensure_exists_not_found(self, user_repo: UserRepository):
+        """Проверяет ошибку при отсутствии записи."""
         with pytest.raises(UserNotFoundError):
             await user_repo.ensure_exists(999999)
 
     async def test_unique_email_violation(self, user_repo: UserRepository):
+        """Проверяет нарушение уникальности email."""
         await user_repo.create_user(
             UserCreate(
                 email="dup@mail.com",
@@ -128,6 +137,7 @@ class TestUserRepository:
             )
 
     async def test_update_user_email_role_password(self, user_repo: UserRepository):
+        """Проверяет обновляет пользователя email роль пароль."""
         old_password = "old-password"
         u = await user_repo.create_user(
             UserCreate(
@@ -159,6 +169,7 @@ class TestUserRepository:
         assert fetched.role == UserRole.ADMIN
 
     async def test_update_user_email_to_existing_should_fail(self, user_repo: UserRepository):
+        """Проверяет ошибку обновления на существующий email."""
         await user_repo.create_user(
             UserCreate(
                 email="user_a@mail.com",

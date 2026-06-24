@@ -14,6 +14,7 @@ from api_manager_books.schemas.logs import LogCreate
 
 
 def _validate_uuid_or_none(value: uuid.UUID | None, field_name: str) -> None:
+    """Проверить UUID или None."""
     if value is not None and not isinstance(value, uuid.UUID):
         raise TypeError(f"{field_name} должен быть UUID или None")
 
@@ -24,6 +25,7 @@ class LogRepository:
     """
 
     def __init__(self, session: AsyncSession):
+        """Инициализировать репозиторий логов."""
         self._session = session
 
     async def log_action(

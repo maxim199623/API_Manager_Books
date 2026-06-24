@@ -5,21 +5,29 @@ from pydantic import BaseModel, EmailStr
 
 
 class AuthRequest(BaseModel):
+    """Данные для авторизации."""
+
     email: EmailStr
     password: str
 
 
 class TokenResponse(BaseModel):
+    """Ответ с access-токеном."""
+
     access_token: str
     token_type: str = "bearer"
 
 
 class ChaptersCountResponse(BaseModel):
+    """Количество глав книги."""
+
     book_id: uuid.UUID
     chapters_count: int
 
 
 class SettingsResponse(BaseModel):
+    """Текущие настройки приложения."""
+
     backend: Literal["sqlite", "postgres"]
     echo: bool
 

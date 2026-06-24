@@ -7,12 +7,15 @@ from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings,
 
 
 class AppSettings(BaseModel):
+    """Описывает настройки приложения."""
+
     database: DatabaseSettings
 
 class SettingsManager:
     """Менеджер настроек"""
 
     def __init__(self, path: str | Path = "config.ini"):
+        """Загружает настройки из файла."""
         self.path = Path(path)
         self._parser = ConfigParser()
 
@@ -32,6 +35,7 @@ class SettingsManager:
     # ---------- внутреннее чтение из ConfigParser ----------
 
     def _load_from_parser(self) -> AppSettings:
+        """Читает настройки из ConfigParser."""
         if "database" not in self._parser:
             raise KeyError("Section [database] is required in config.ini")
 
@@ -74,19 +78,23 @@ class SettingsManager:
 
     @property
     def db(self) -> DatabaseSettings:
+        """Возвращает настройки базы данных."""
         return self._settings.database
 
     @property
     def sqlite(self) -> SQLiteSettings | None:
+        """Возвращает настройки SQLite."""
         return self._settings.database.sqlite
 
     @property
     def postgres(self) -> PostgresSettings | None:
+        """Возвращает настройки PostgreSQL."""
         return self._settings.database.postgres
 
     # ---------- методы изменения настроек ----------
 
     def set_backend(self, backend: str) -> None:
+        """Меняет активный backend базы данных."""
         backend = backend.lower().strip()
         if backend not in ("sqlite", "postgres"):
             raise ValueError("backend must be 'sqlite' or 'postgres'")
@@ -228,6 +236,7 @@ class SettingsManager:
             }
 
     def _save_to_disk(self) -> None:
+        """Записывает настройки на диск."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("w", encoding="utf-8") as f:
             self._parser.write(f)

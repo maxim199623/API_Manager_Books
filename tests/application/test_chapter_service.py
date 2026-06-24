@@ -16,11 +16,14 @@ from api_manager_books.schemas.book_chapters import BookChapterCreate, BookChapt
 
 
 class FakeBookRepo:
+    """Тестовый репозиторий книг."""
     def __init__(self, *, exists: bool = True):
+        """Инициализирует тестовый объект."""
         self.exists = exists
         self.calls: list[uuid.UUID] = []
 
     async def ensure_exists(self, book_id: uuid.UUID):
+        """Имитирует проверку существования записи."""
         self.calls.append(book_id)
         if not self.exists:
             raise BookNotFoundError
@@ -28,6 +31,7 @@ class FakeBookRepo:
 
 
 class FakeChapterRepo:
+    """Тестовый репозиторий глав."""
     def __init__(
         self,
         *,
@@ -38,6 +42,7 @@ class FakeChapterRepo:
         create_error: Exception | None = None,
         update_error: Exception | None = None,
     ):
+        """Инициализирует тестовый объект."""
         self.headers = headers if headers is not None else []
         self.count = count
         self.chapter = chapter
@@ -51,10 +56,12 @@ class FakeChapterRepo:
         self.update_calls = []
 
     async def list_chapter_headers(self, book_id: uuid.UUID):
+        """Имитирует получение заголовков глав."""
         self.header_calls.append(book_id)
         return self.headers
 
     async def count_chapters(self, book_id: uuid.UUID) -> int:
+        """Имитирует подсчет глав книги."""
         self.count_calls.append(book_id)
         return self.count
 
@@ -63,12 +70,14 @@ class FakeChapterRepo:
         book_id: uuid.UUID,
         chapter_num: int,
     ):
+        """Имитирует поиск главы по книге и номеру."""
         self.chapter_calls.append((book_id, chapter_num))
         if not self.chapter_exists:
             raise BookChapterNotFoundError
         return self.chapter
 
     async def create_chapters(self, book_id: uuid.UUID, data):
+        """Имитирует создание глав книги."""
         self.create_calls.append((book_id, data))
         if self.create_error is not None:
             raise self.create_error
@@ -80,6 +89,7 @@ class FakeChapterRepo:
         chapter_num: int,
         data,
     ):
+        """Имитирует обновление главы по номеру."""
         self.update_calls.append((book_id, chapter_num, data))
         if self.update_error is not None:
             raise self.update_error
@@ -87,15 +97,19 @@ class FakeChapterRepo:
 
 
 class FakeLogRepo:
+    """Тестовый репозиторий логов."""
     def __init__(self):
+        """Инициализирует тестовый объект."""
         self.entries = []
 
     async def log_from_dto(self, payload) -> None:
+        """Сохраняет тестовую запись лога."""
         self.entries.append(payload)
 
 
 @pytest.mark.asyncio
 async def test_list_chapter_headers_checks_book_and_returns_headers():
+    """Проверяет заголовки глав после проверки книги."""
     book_id = uuid.uuid4()
     headers = [
         SimpleNamespace(chapter=1, chapter_name="Opening"),
@@ -114,6 +128,7 @@ async def test_list_chapter_headers_checks_book_and_returns_headers():
 
 @pytest.mark.asyncio
 async def test_list_chapter_headers_propagates_book_not_found_without_chapter_call():
+    """Проверяет отсутствие вызова глав при пропавшей книге."""
     book_id = uuid.uuid4()
     chapter_repo = FakeChapterRepo(headers=[SimpleNamespace(chapter=1, chapter_name="Hidden")])
     service = ChapterService(FakeBookRepo(exists=False), chapter_repo, FakeLogRepo())
@@ -126,6 +141,7 @@ async def test_list_chapter_headers_propagates_book_not_found_without_chapter_ca
 
 @pytest.mark.asyncio
 async def test_count_chapters_checks_book_and_returns_book_id_with_count():
+    """Проверяет подсчет глав после проверки книги."""
     book_id = uuid.uuid4()
     book_repo = FakeBookRepo()
     chapter_repo = FakeChapterRepo(count=7)
@@ -140,6 +156,7 @@ async def test_count_chapters_checks_book_and_returns_book_id_with_count():
 
 @pytest.mark.asyncio
 async def test_get_chapter_returns_chapter_and_logs_reading():
+    """Проверяет возврат главы и лог чтения."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapter_num = 3
@@ -173,6 +190,7 @@ async def test_get_chapter_returns_chapter_and_logs_reading():
 
 @pytest.mark.asyncio
 async def test_get_chapter_propagates_chapter_not_found_without_log():
+    """Проверяет отсутствие лога при пропавшей главе."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapter_repo = FakeChapterRepo(chapter_exists=False)
@@ -188,6 +206,7 @@ async def test_get_chapter_propagates_chapter_not_found_without_log():
 
 @pytest.mark.asyncio
 async def test_add_chapters_creates_chapters_and_logs_operation():
+    """Проверяет добавление глав и лог операции."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapters = [
@@ -217,6 +236,7 @@ async def test_add_chapters_creates_chapters_and_logs_operation():
 
 @pytest.mark.asyncio
 async def test_add_chapters_rejects_empty_list_without_create_or_log():
+    """Проверяет отказ от пустого списка глав."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     book_repo = FakeBookRepo()
@@ -234,6 +254,7 @@ async def test_add_chapters_rejects_empty_list_without_create_or_log():
 
 @pytest.mark.asyncio
 async def test_add_chapters_rejects_duplicate_chapter_numbers_without_create_or_log():
+    """Проверяет отказ от дублей номеров глав."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapters = [
@@ -255,6 +276,7 @@ async def test_add_chapters_rejects_duplicate_chapter_numbers_without_create_or_
 
 @pytest.mark.asyncio
 async def test_add_chapters_propagates_book_not_found_without_create_or_log():
+    """Проверяет ошибку пропавшей книги без создания глав."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapters = [
@@ -273,6 +295,7 @@ async def test_add_chapters_propagates_book_not_found_without_create_or_log():
 
 @pytest.mark.asyncio
 async def test_add_chapters_propagates_integrity_error_without_log():
+    """Проверяет проброс ошибки целостности без лога."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapters = [
@@ -292,6 +315,7 @@ async def test_add_chapters_propagates_integrity_error_without_log():
 
 @pytest.mark.asyncio
 async def test_update_chapter_updates_chapter_and_logs_operation():
+    """Проверяет обновление главы и лог операции."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapter_num = 4
@@ -318,6 +342,7 @@ async def test_update_chapter_updates_chapter_and_logs_operation():
 
 @pytest.mark.asyncio
 async def test_update_chapter_propagates_chapter_not_found_without_log():
+    """Проверяет отсутствие лога при ошибке обновления главы."""
     user_id = uuid.uuid4()
     book_id = uuid.uuid4()
     chapter_num = 4

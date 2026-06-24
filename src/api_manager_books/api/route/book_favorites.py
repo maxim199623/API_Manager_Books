@@ -17,6 +17,7 @@ async def favorite_book(
     favorite_service: FavoriteService = Depends(get_favorite_service),
     current_user: UserRead = Depends(require_auth),
 ):
+    """Добавляет книгу в избранное пользователя."""
     try:
         await favorite_service.favorite_book(current_user.id, book_id)
     except BookNotFoundError as err:
@@ -33,6 +34,7 @@ async def unfavorite_book(
     favorite_service: FavoriteService = Depends(get_favorite_service),
     current_user: UserRead = Depends(require_auth),
 ):
+    """Удаляет книгу из избранного пользователя."""
     try:
         await favorite_service.unfavorite_book(current_user.id, book_id)
     except BookNotFoundError as err:

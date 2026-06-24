@@ -27,6 +27,7 @@ async def update_settings(
     settings_service: SettingsService = Depends(get_settings_service),
     current_user = Depends(require_admin),
 ):
+    """Обновляет настройки приложения."""
     try:
         result = await settings_service.update_settings(
             payload,

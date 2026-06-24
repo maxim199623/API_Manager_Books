@@ -15,17 +15,20 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def book_repo(repository_session) -> BookRepository:
+    """Готовит репозиторий книг."""
     return BookRepository(repository_session)
 
 
 @pytest_asyncio.fixture
 async def chapter_repo(repository_session) -> BookChapterRepository:
+    """Готовит репозиторий глав."""
     return BookChapterRepository(repository_session)
 
 
 # ---------- Хелпер: создать книгу для теста ----------
 
 async def _create_test_book(book_repo: BookRepository, title: str = "Test Book") -> Book:
+    """Создает тестовую книгу для глав."""
     return await book_repo.create_book(
         BookCreate(
             cover=None,
@@ -43,11 +46,13 @@ async def _create_test_book(book_repo: BookRepository, title: str = "Test Book")
 
 class TestBookChapterRepository:
 
+    """Проверяет репозиторий глав книг."""
     async def test_create_and_get_chapter_by_id_and_number(
         self,
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет создание и получение главы."""
         book = await _create_test_book(book_repo, "Book 1")
 
         created_count = await chapter_repo.create_chapters(
@@ -84,6 +89,7 @@ class TestBookChapterRepository:
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет отклонение одиночной схемы."""
         book = await _create_test_book(book_repo, "Book With Invalid Chapter Input")
 
         with pytest.raises(TypeError, match="последовательность BookChapterCreate"):
@@ -97,6 +103,7 @@ class TestBookChapterRepository:
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет список и подсчет глав."""
         book = await _create_test_book(book_repo, "Book With Chapters")
 
         chapters_data = [
@@ -120,6 +127,7 @@ class TestBookChapterRepository:
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет обновляет главу by number."""
         book = await _create_test_book(book_repo, "Updatable Book")
 
         await chapter_repo.create_chapters(
@@ -145,6 +153,7 @@ class TestBookChapterRepository:
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет удаляет главу by number."""
         book = await _create_test_book(book_repo, "Delete Chapter Book")
 
         await chapter_repo.create_chapters(
@@ -172,6 +181,7 @@ class TestBookChapterRepository:
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет удаляет all for книгу."""
         book = await _create_test_book(book_repo, "Book For Bulk Delete")
 
         for i in range(1, 5):
@@ -193,6 +203,7 @@ class TestBookChapterRepository:
         self,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет ensure exists ошибки."""
         with pytest.raises(BookChapterNotFoundError):
             await chapter_repo.ensure_exists_by_id(999999)
 
@@ -247,6 +258,7 @@ class TestBookChapterRepository:
         book_repo: BookRepository,
         chapter_repo: BookChapterRepository,
     ):
+        """Проверяет список главу заголовки возвращает only names in главу order."""
         book = await _create_test_book(book_repo, "Book With Header List")
 
         await chapter_repo.create_chapters(

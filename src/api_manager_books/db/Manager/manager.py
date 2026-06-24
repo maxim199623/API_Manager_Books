@@ -17,6 +17,7 @@ class AsyncDBManager:
     """
 
     def __init__(self, db_settings: DatabaseSettings, base: type[DeclarativeBase]):
+        """Инициализировать менеджер БД."""
         self._settings = db_settings
         self._base = base
 
@@ -33,6 +34,7 @@ class AsyncDBManager:
         if self._engine.url.get_backend_name() == "sqlite":
             @event.listens_for(self._engine.sync_engine, "connect")
             def _set_sqlite_pragma(dbapi_conn, connection_record):
+                """Включить внешние ключи для SQLite."""
                 cursor = dbapi_conn.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()

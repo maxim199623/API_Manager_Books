@@ -15,6 +15,7 @@ class BaseTestModel(DeclarativeBase):
 
 
 class BaseTestItem(BaseTestModel):
+    """Базовая тестовая модель SQLAlchemy."""
     __tablename__ = "test_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -55,6 +56,8 @@ def async_db_manager(settings_manager: SettingsManager) -> AsyncDBManager:
     return AsyncDBManager(settings_manager.db, BaseTestItem)
 
 class TestAsyncDBManager:
+    """Проверяет асинхронный менеджер БД."""
+
     @pytest.mark.asyncio
     async def test_engine_url_and_echo(self, async_db_manager: AsyncDBManager, settings_manager: SettingsManager):
         """
@@ -81,6 +84,7 @@ class TestAsyncDBManager:
 
         async with async_db_manager.engine.begin() as conn:
             def _get_tables(sync_conn):
+                """Возвращает таблицы из метаданных."""
                 inspector = inspect(sync_conn)
                 return inspector.get_table_names()
 

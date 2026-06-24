@@ -63,6 +63,7 @@ async def clear_read_history_for_book(
     current_user: UserRead = Depends(require_auth),
     reading_history_service: ReadingHistoryService = Depends(get_reading_history_service),
 ):
+    """Очищает историю чтения книги."""
     await reading_history_service.clear_read_history_for_book(
         user_id=current_user.id,
         book_id=book_id,

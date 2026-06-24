@@ -7,24 +7,35 @@ from api_manager_books.schemas.logs import LogCreate
 
 
 class BookRecord(Protocol):
+    """Книга для сценариев глав."""
+
     id: uuid.UUID
     title: str
 
 
 class ChapterRecord(Protocol):
+    """Глава для сервисных сценариев."""
+
     id: uuid.UUID
 
 
 class BookLookup(Protocol):
+    """Хранилище проверки книг."""
+
     async def ensure_exists(self, book_id: uuid.UUID) -> BookRecord:
+        """Возвращает существующую книгу."""
         ...
 
 
 class ChapterStorage(Protocol):
+    """Хранилище глав книги."""
+
     async def list_chapter_headers(self, book_id: uuid.UUID) -> Sequence[object]:
+        """Возвращает заголовки глав книги."""
         ...
 
     async def count_chapters(self, book_id: uuid.UUID) -> int:
+        """Возвращает количество глав книги."""
         ...
 
     async def ensure_exists_by_book_and_number(
@@ -32,6 +43,7 @@ class ChapterStorage(Protocol):
         book_id: uuid.UUID,
         chapter_num: int,
     ) -> ChapterRecord:
+        """Возвращает существующую главу по книге и номеру."""
         ...
 
     async def create_chapters(
@@ -39,6 +51,7 @@ class ChapterStorage(Protocol):
         book_id: uuid.UUID,
         data: list[BookChapterCreate],
     ) -> int:
+        """Создает главы книги."""
         ...
 
     async def update_chapter_by_number(
@@ -47,11 +60,15 @@ class ChapterStorage(Protocol):
         chapter_num: int,
         data: BookChapterUpdate,
     ) -> ChapterRecord:
+        """Обновляет главу по книге и номеру."""
         ...
 
 
 class LogWriter(Protocol):
+    """Хранилище логов действий."""
+
     async def log_from_dto(self, payload: LogCreate) -> None:
+        """Записывает лог из DTO."""
         ...
 
 
@@ -72,6 +89,7 @@ class ChapterService:
         chapter_repo: ChapterStorage,
         log_repo: LogWriter,
     ):
+        """Инициализирует зависимости сервиса глав."""
         self._book_repo = book_repo
         self._chapter_repo = chapter_repo
         self._log_repo = log_repo

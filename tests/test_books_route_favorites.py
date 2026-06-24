@@ -25,6 +25,7 @@ from api_manager_books.schemas.users import UserRead
 
 
 def test_books_route_imports_book_dtos_from_schemas_package() -> None:
+    """Проверяет импорт DTO из пакета схем."""
     route_path = Path(books_route.__file__)
     tree = ast.parse(route_path.read_text(encoding="utf-8"))
     dto_names = {"BookCreate", "BookListRead", "BookMetadataUpdate"}
@@ -50,6 +51,7 @@ def test_books_route_imports_book_dtos_from_schemas_package() -> None:
 
 @dataclass
 class FakeBook:
+    """Тестовая модель книги."""
     id: uuid.UUID
     title: str
     author: str | None
@@ -63,7 +65,9 @@ class FakeBook:
 
 
 class FakeBookRepo:
+    """Фейковый репозиторий книг."""
     def __init__(self, books: list[FakeBook]):
+        """Инициализирует тестовый объект."""
         self.books = books
         self.calls: list[dict[str, object]] = []
 
@@ -78,6 +82,7 @@ class FakeBookRepo:
         sort_dir: str = "desc",
         user_id: uuid.UUID | None = None,
     ) -> list[FakeBook]:
+        """Имитирует получение списка книг."""
         self.calls.append(
             {
                 "author": author,
@@ -93,7 +98,9 @@ class FakeBookRepo:
 
 
 class FakeFavoriteBookRepo:
+    """Фейковый репозиторий избранных книг."""
     def __init__(self, favorite_ids: set[uuid.UUID]):
+        """Инициализирует тестовый объект."""
         self.favorite_ids = favorite_ids
         self.calls: list[tuple[uuid.UUID, list[uuid.UUID]]] = []
 
@@ -102,12 +109,15 @@ class FakeFavoriteBookRepo:
         user_id: uuid.UUID,
         book_ids: list[uuid.UUID],
     ) -> set[uuid.UUID]:
+        """Имитирует получение ID избранных книг."""
         self.calls.append((user_id, book_ids))
         return self.favorite_ids
 
 
 class FakeBookService:
+    """Фейковый сервис книг."""
     def __init__(self, books=None):
+        """Инициализирует тестовый объект."""
         self.books = books or []
         self.list_calls: list[dict[str, object]] = []
 
@@ -122,6 +132,7 @@ class FakeBookService:
         sort_by: str,
         sort_dir: str,
     ):
+        """Имитирует получение списка книг."""
         self.list_calls.append(
             {
                 "user_id": user_id,
@@ -137,18 +148,22 @@ class FakeBookService:
 
 
 class FakeFavoriteService:
+    """Фейковый сервис избранного."""
     def __init__(self, *, favorite_exists: bool = True, unfavorite_exists: bool = True):
+        """Инициализирует тестовый объект."""
         self.favorite_exists = favorite_exists
         self.unfavorite_exists = unfavorite_exists
         self.favorite_calls: list[tuple[uuid.UUID, uuid.UUID]] = []
         self.unfavorite_calls: list[tuple[uuid.UUID, uuid.UUID]] = []
 
     async def favorite_book(self, user_id: uuid.UUID, book_id: uuid.UUID) -> None:
+        """Имитирует добавление книги в избранное."""
         self.favorite_calls.append((user_id, book_id))
         if not self.favorite_exists:
             raise BookNotFoundError
 
     async def unfavorite_book(self, user_id: uuid.UUID, book_id: uuid.UUID) -> None:
+        """Имитирует удаление книги из избранного."""
         self.unfavorite_calls.append((user_id, book_id))
         if not self.unfavorite_exists:
             raise BookNotFoundError
@@ -156,12 +171,14 @@ class FakeFavoriteService:
 
 @dataclass(frozen=True)
 class FakeBinaryMeta:
+    """Тестовые метаданные бинарного файла."""
     content_type: str | None
     file_name: str | None
     size: int
 
 
 class FakeBookFileService:
+    """Фейковый сервис файлов книги."""
     def __init__(
         self,
         *,
@@ -171,6 +188,7 @@ class FakeBookFileService:
         file_chunks: list[bytes] | None = None,
         update_exists: bool = True,
     ):
+        """Инициализирует тестовый объект."""
         self.cover_meta = cover_meta
         self.file_meta = file_meta
         self.cover_chunks = cover_chunks or []
@@ -180,20 +198,25 @@ class FakeBookFileService:
         self.file_updates = []
 
     async def get_cover_meta(self, book_id: uuid.UUID) -> FakeBinaryMeta | None:
+        """Имитирует получение метаданных обложки."""
         return self.cover_meta
 
     async def get_file_meta(self, book_id: uuid.UUID) -> FakeBinaryMeta | None:
+        """Имитирует получение метаданных файла."""
         return self.file_meta
 
     async def iter_cover_chunks(self, book_id: uuid.UUID):
+        """Итерирует чанки тестовой обложки."""
         for chunk in self.cover_chunks:
             yield chunk
 
     async def iter_file_chunks(self, book_id: uuid.UUID):
+        """Итерирует чанки тестового файла."""
         for chunk in self.file_chunks:
             yield chunk
 
     async def update_cover(self, user_id, book_id, content_type, cover_chunks):
+        """Имитирует обновление обложки."""
         cover_data = [chunk async for chunk in cover_chunks]
         self.cover_updates.append(
             {
@@ -207,6 +230,7 @@ class FakeBookFileService:
             raise BookFileNotFoundInServiceError
 
     async def update_file(self, user_id, book_id, filename, content_type, file_chunks):
+        """Имитирует обновление файла."""
         file_data = [chunk async for chunk in file_chunks]
         self.file_updates.append(
             {
@@ -222,6 +246,7 @@ class FakeBookFileService:
 
 
 def make_user() -> UserRead:
+    """Создает тестового пользователя."""
     return UserRead(
         id=uuid.uuid4(),
         email="reader@example.com",
@@ -232,6 +257,7 @@ def make_user() -> UserRead:
 
 
 def make_admin() -> UserRead:
+    """Создает тестового администратора."""
     return UserRead(
         id=uuid.uuid4(),
         email="admin@example.com",
@@ -242,6 +268,7 @@ def make_admin() -> UserRead:
 
 
 def make_book(title: str, author: str | None = None, series: str | None = None) -> FakeBook:
+    """Создает тестовую книгу."""
     return FakeBook(
         id=uuid.uuid4(),
         title=title,
@@ -257,6 +284,7 @@ def make_book(title: str, author: str | None = None, series: str | None = None) 
 
 
 def make_upload(filename: str, content: bytes, content_type: str) -> UploadFile:
+    """Создает тестовую загрузку файла."""
     return UploadFile(
         filename=filename,
         file=BytesIO(content),
@@ -266,6 +294,7 @@ def make_upload(filename: str, content: bytes, content_type: str) -> UploadFile:
 
 @pytest.mark.asyncio
 async def test_get_books_marks_favorites_in_response():
+    """Проверяет отметку избранного в ответе."""
     current_user = make_user()
     favorite_book = make_book("Favorite Book", author="Author A", series="Series A")
     regular_book = make_book("Regular Book", author="Author B", series="Series B")
@@ -291,6 +320,7 @@ async def test_get_books_marks_favorites_in_response():
 
 @pytest.mark.asyncio
 async def test_get_books_returns_empty_list_without_favorite_lookup():
+    """Проверяет список книг без запроса избранного."""
     current_user = make_user()
     book_service = FakeBookService([])
 
@@ -307,6 +337,7 @@ async def test_get_books_returns_empty_list_without_favorite_lookup():
 
 @pytest.mark.asyncio
 async def test_get_books_passes_author_and_series_filters_to_repository():
+    """Проверяет передачу фильтров автора и серии."""
     current_user = make_user()
     book_service = FakeBookService([])
 
@@ -332,6 +363,7 @@ async def test_get_books_passes_author_and_series_filters_to_repository():
 
 @pytest.mark.asyncio
 async def test_get_books_passes_sorting_to_repository():
+    """Проверяет передачу сортировки в репозиторий."""
     current_user = make_user()
     book_service = FakeBookService([])
 
@@ -359,6 +391,7 @@ async def test_get_books_passes_sorting_to_repository():
 
 @pytest.mark.asyncio
 async def test_get_books_passes_pagination_to_repository():
+    """Проверяет передачу пагинации в репозиторий."""
     current_user = make_user()
     book_service = FakeBookService([])
 
@@ -386,6 +419,7 @@ async def test_get_books_passes_pagination_to_repository():
 
 @pytest.mark.asyncio
 async def test_favorite_book_route_calls_service_with_current_user_id():
+    """Проверяет вызов сервиса."""
     current_user = make_user()
     book_id = uuid.uuid4()
     favorite_service = FakeFavoriteService()
@@ -402,6 +436,7 @@ async def test_favorite_book_route_calls_service_with_current_user_id():
 
 @pytest.mark.asyncio
 async def test_unfavorite_book_route_calls_service_with_current_user_id():
+    """Проверяет вызов сервиса."""
     current_user = make_user()
     book_id = uuid.uuid4()
     favorite_service = FakeFavoriteService()
@@ -418,6 +453,7 @@ async def test_unfavorite_book_route_calls_service_with_current_user_id():
 
 @pytest.mark.asyncio
 async def test_favorite_book_returns_404_when_book_missing():
+    """Проверяет возврат 404 при ошибке."""
     current_user = make_user()
     book_id = uuid.uuid4()
     favorite_service = FakeFavoriteService(favorite_exists=False)
@@ -436,6 +472,7 @@ async def test_favorite_book_returns_404_when_book_missing():
 
 @pytest.mark.asyncio
 async def test_unfavorite_book_returns_404_when_book_missing():
+    """Проверяет возврат 404 при ошибке."""
     current_user = make_user()
     book_id = uuid.uuid4()
     favorite_service = FakeFavoriteService(unfavorite_exists=False)
@@ -454,6 +491,7 @@ async def test_unfavorite_book_returns_404_when_book_missing():
 
 @pytest.mark.asyncio
 async def test_get_book_cover_streams_chunked_bytes_with_actual_mime():
+    """Проверяет потоковую отдачу с реальным MIME."""
     book_file_service = FakeBookFileService(
         cover_meta=FakeBinaryMeta(content_type="image/webp", file_name=None, size=6),
         cover_chunks=[b"ab", b"cd", b"ef"],
@@ -473,6 +511,7 @@ async def test_get_book_cover_streams_chunked_bytes_with_actual_mime():
 
 @pytest.mark.asyncio
 async def test_get_book_file_streams_chunked_bytes_and_sets_filename():
+    """Проверяет имя файла в ответе."""
     book_file_service = FakeBookFileService(
         file_meta=FakeBinaryMeta(
             content_type="application/epub+zip",
@@ -497,6 +536,7 @@ async def test_get_book_file_streams_chunked_bytes_and_sets_filename():
 
 @pytest.mark.asyncio
 async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
+    """Проверяет замену обложки через multipart."""
     book_id = uuid.uuid4()
     book_file_service = FakeBookFileService()
     current_user = make_admin()
@@ -521,6 +561,7 @@ async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
 
 @pytest.mark.asyncio
 async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
+    """Проверяет замену файла через multipart."""
     book_id = uuid.uuid4()
     book_file_service = FakeBookFileService()
     current_user = make_admin()
@@ -546,6 +587,7 @@ async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
 
 
 def test_book_metadata_update_rejects_binary_fields_after_split_endpoints():
+    """Проверяет запрет бинарных полей после разделения эндпоинтов."""
     payload_cls = book_shems.BookMetadataUpdate
 
     with pytest.raises(ValidationError):
@@ -553,6 +595,7 @@ def test_book_metadata_update_rejects_binary_fields_after_split_endpoints():
 
 
 def test_book_metadata_update_accepts_metadata_fields():
+    """Проверяет прием полей метаданных."""
     payload_cls = book_shems.BookMetadataUpdate
 
     payload = payload_cls.model_validate({"title": "Updated title", "description": "Changed"})

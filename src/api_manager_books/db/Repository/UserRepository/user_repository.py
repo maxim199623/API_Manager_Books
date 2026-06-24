@@ -13,15 +13,22 @@ from api_manager_books.security.passwords import hash_password
 
 
 class EmailAlreadyExistsError(Exception):
+    """Email уже занят."""
+
     pass
 
 
 class UserNotFoundError(Exception):
+    """Пользователь не найден."""
+
     pass
 
 
 class UserRepository:
+    """Репозиторий пользователей."""
+
     def __init__(self, session: AsyncSession):
+        """Инициализировать репозиторий пользователей."""
         self._session = session
 
     async def create_user(self, data: UserCreate) -> User:
@@ -117,6 +124,7 @@ class UserRepository:
         return user
 
     async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None):
+        """Установить идентификатор сессии пользователя."""
         user = await self.ensure_exists(user_id)
         user.session = session_id
         await self._session.flush()

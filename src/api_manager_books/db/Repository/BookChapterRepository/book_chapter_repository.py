@@ -17,6 +17,8 @@ class BookChapterNotFoundError(Exception):
 
 @dataclass(frozen=True)
 class BookChapterHeader:
+    """Краткие данные главы книги."""
+
     chapter: int
     chapter_name: str | None
 
@@ -27,6 +29,7 @@ class BookChapterRepository:
     """
 
     def __init__(self, session: AsyncSession):
+        """Инициализировать репозиторий глав."""
         self._session = session
 
     async def create_chapters(

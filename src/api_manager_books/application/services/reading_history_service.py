@@ -3,16 +3,24 @@ from typing import Protocol
 
 
 class BookLookup(Protocol):
+    """Хранилище проверки книг."""
+
     async def ensure_exists(self, book_id: uuid.UUID) -> object:
+        """Возвращает существующую книгу."""
         ...
 
 
 class ChapterLookup(Protocol):
+    """Хранилище поиска глав."""
+
     async def get_chapters_numbers_by_ids(self, chapter_ids: list[uuid.UUID]) -> list[int]:
+        """Возвращает номера глав по идентификаторам."""
         ...
 
 
 class ReadingLogStorage(Protocol):
+    """Хранилище истории чтения."""
+
     async def list_read_chapter_ids_for_user(
         self,
         *,
@@ -20,6 +28,7 @@ class ReadingLogStorage(Protocol):
         offset: int,
         limit: int,
     ) -> list[uuid.UUID]:
+        """Возвращает ID прочитанных глав пользователя."""
         ...
 
     async def list_read_chapter_ids_for_user_and_book(
@@ -30,6 +39,7 @@ class ReadingLogStorage(Protocol):
         offset: int,
         limit: int,
     ) -> list[uuid.UUID]:
+        """Возвращает ID прочитанных глав пользователя по книге."""
         ...
 
     async def count_read_chapters_for_user_and_book(
@@ -38,6 +48,7 @@ class ReadingLogStorage(Protocol):
         user_id: uuid.UUID,
         book_id: uuid.UUID,
     ) -> int:
+        """Возвращает число прочитанных глав пользователя по книге."""
         ...
 
     async def clear_read_history_for_user_and_book(
@@ -46,6 +57,7 @@ class ReadingLogStorage(Protocol):
         user_id: uuid.UUID,
         book_id: uuid.UUID,
     ) -> None:
+        """Очищает историю чтения пользователя по книге."""
         ...
 
 
@@ -58,6 +70,7 @@ class ReadingHistoryService:
         chapter_repo: ChapterLookup,
         log_repo: ReadingLogStorage,
     ):
+        """Инициализирует зависимости истории чтения."""
         self._book_repo = book_repo
         self._chapter_repo = chapter_repo
         self._log_repo = log_repo

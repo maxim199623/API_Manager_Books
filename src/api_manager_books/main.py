@@ -7,6 +7,7 @@ from api_manager_books.api.security.utils import ensure_self_signed_cert
 
 
 def main():
+    """Запускает API-сервер с TLS."""
     cert_file, key_file = ensure_self_signed_cert("cert.pem", "key.pem",
                                                   common_name="localhost",
                                                   ip_address=IPv4Address("127.0.0.1"))

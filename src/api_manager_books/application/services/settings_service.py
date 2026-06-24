@@ -8,25 +8,35 @@ from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings,
 
 
 class DBManager(Protocol):
+    """Менеджер базы данных."""
+
     async def create_schema(self) -> None:
+        """Создает схему базы данных."""
         ...
 
     async def migrate_to(self, target: "DBManager") -> None:
+        """Мигрирует данные в целевой менеджер."""
         ...
 
     async def dispose(self) -> None:
+        """Освобождает ресурсы менеджера."""
         ...
 
 
 class SettingsStore(Protocol):
+    """Хранилище настроек приложения."""
+
     @property
     def settings(self) -> AppSettings:
+        """Возвращает текущие настройки."""
         ...
 
     def replace_settings(self, settings: AppSettings) -> None:
+        """Заменяет текущие настройки."""
         ...
 
     def save(self) -> None:
+        """Сохраняет текущие настройки."""
         ...
 
 
@@ -36,6 +46,8 @@ class SettingsMigrationError(Exception):
 
 @dataclass(frozen=True)
 class SettingsUpdateResult:
+    """Результат обновления настроек."""
+
     response: SettingsResponse
     new_db_manager: DBManager
 
@@ -48,10 +60,12 @@ class SettingsService:
         settings_manager: SettingsStore,
         db_manager_factory: Callable[[DatabaseSettings], DBManager],
     ):
+        """Инициализирует зависимости сервиса настроек."""
         self._settings_manager = settings_manager
         self._db_manager_factory = db_manager_factory
 
     def get_current_settings(self) -> SettingsResponse:
+        """Возвращает текущие настройки для ответа API."""
         return self._build_response(
             self._settings_manager.settings,
             only_active_sqlite=True,
@@ -62,6 +76,7 @@ class SettingsService:
         payload: SettingsUpdate,
         current_db_manager: DBManager,
     ) -> SettingsUpdateResult:
+        """Обновляет настройки и менеджер базы данных."""
         old_settings = self._settings_manager.settings
         draft_settings = old_settings.model_copy(deep=True)
         old_backend = old_settings.database.backend
@@ -95,6 +110,7 @@ class SettingsService:
         )
 
     def _apply_payload(self, settings: AppSettings, payload: SettingsUpdate) -> None:
+        """Применяет payload к черновику настроек."""
         db = settings.database
 
         if payload.backend is not None:
@@ -141,6 +157,7 @@ class SettingsService:
         *,
         only_active_sqlite: bool = False,
     ) -> SettingsResponse:
+        """Собирает DTO ответа с настройками."""
         db = settings.database
         sqlite_cfg = db.sqlite
         pg = db.postgres

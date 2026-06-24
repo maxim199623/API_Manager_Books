@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class BookChapterBase(BaseModel):
+    """Базовые поля главы книги."""
+
     chapter: int
     chapter_name: str | None = None
     description: str
@@ -29,6 +31,8 @@ class BookChapterUpdate(BaseModel):
 
 
 class BookChapterListRead(BaseModel):
+    """Краткое представление главы."""
+
     chapter: int
     chapter_name: str | None = None
 
@@ -36,6 +40,8 @@ class BookChapterListRead(BaseModel):
 
 
 class BookChapterRead(BookChapterBase):
+    """Полное представление главы книги."""
+
     id: uuid.UUID
     book_id: uuid.UUID
     created_at: datetime

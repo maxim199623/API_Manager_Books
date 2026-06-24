@@ -12,28 +12,36 @@ from api_manager_books.schemas.users import UserRead, UserUpdate
 
 
 class FakeUserRepo:
+    """Тестовый репозиторий пользователей."""
     def __init__(self):
+        """Инициализирует тестовый объект."""
         self.session_calls: list[tuple[uuid.UUID, uuid.UUID | None]] = []
 
     async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None):
+        """Имитирует смену сессии пользователя."""
         self.session_calls.append((user_id, session_id))
 
 
 class FakeLogRepo:
+    """Тестовый репозиторий логов."""
     pass
 
 
 class FakeNotificationManager:
+    """Тестовый менеджер уведомлений."""
     async def send_to_user(self, user_id: uuid.UUID, message: dict):
+        """Запрещает отправку уведомлений в этом тесте."""
         raise AssertionError("logout не должен отправлять уведомления")
 
 
 def fake_token_factory(payload: dict) -> str:
+    """Запрещает выпуск токена в этом тесте."""
     raise AssertionError("logout не должен выпускать токен")
 
 
 @pytest.mark.asyncio
 async def test_logout_closes_current_session():
+    """Проверяет закрытие текущей сессии при logout."""
     user_id = uuid.uuid4()
     user_repo = FakeUserRepo()
     service = UserService(
@@ -50,12 +58,15 @@ async def test_logout_closes_current_session():
 
 
 class UserRepoWithMissingUser:
+    """Репозиторий, имитирующий отсутствующего пользователя."""
     async def ensure_exists(self, user_id: uuid.UUID):
+        """Имитирует проверку существования записи."""
         raise RepositoryUserNotFoundError(f"User #{user_id} not found")
 
 
 @pytest.mark.asyncio
 async def test_update_user_converts_repository_not_found_to_service_error():
+    """Проверяет преобразование ошибки отсутствующего пользователя."""
     service = UserService(
         user_repo=UserRepoWithMissingUser(),
         log_repo=FakeLogRepo(),

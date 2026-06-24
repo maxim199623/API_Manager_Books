@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 
 class BookBase(BaseModel):
+    """Базовые поля книги."""
+
     cover: bytes | None = None      # bytea
     title: str = Field(..., max_length=255)
     author: str | None = None
@@ -25,6 +27,7 @@ class BookBase(BaseModel):
     @field_validator("cover", "file", mode="before")
     @classmethod
     def decode_base64(cls, v):
+        """Декодирует бинарные поля из base64."""
         if v is None:
             return None
         if isinstance(v, bytes):
@@ -38,6 +41,8 @@ class BookBase(BaseModel):
 
 
 class BookListRead(BaseModel):
+    """Краткое представление книги."""
+
     id: uuid.UUID
     title: str
     author: str | None = None
@@ -86,6 +91,7 @@ class BookUpdate(BaseModel):
     @field_validator("cover", "file", mode="before")
     @classmethod
     def decode_base64(cls, v):
+        """Декодирует бинарные поля из base64."""
         if v is None:
             return None
         if isinstance(v, bytes):
@@ -114,6 +120,8 @@ class BookMetadataUpdate(BaseModel):
 
 
 class BookRead(BookBase):
+    """Полное представление книги."""
+
     id: uuid.UUID
     created_at: datetime
     is_favorite: bool = False
@@ -123,6 +131,7 @@ class BookRead(BookBase):
     # ---------- выход: bytes -> base64 ----------
     @field_serializer("cover", "file")
     def encode_base64(self, v: bytes | None):
+        """Кодирует бинарные поля в base64."""
         if v is None:
             return None
         return b64encode(v).decode("ascii")

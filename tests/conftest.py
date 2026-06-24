@@ -13,6 +13,7 @@ REPOSITORY_BACKENDS = ("sqlite", "postgres")
 
 
 def _repository_postgres_settings() -> PostgresSettings:
+    """Готовит настройки PostgreSQL для репозиториев."""
     return PostgresSettings(
         host="localhost",
         port=5432,
@@ -26,6 +27,7 @@ async def _managed_repository_db(
     settings: DatabaseSettings,
     backend: str,
 ) -> AsyncIterator[AsyncDBManager]:
+    """Создает управляемую тестовую БД репозиториев."""
     db_manager = AsyncDBManager(settings, Base)
 
     ok = await db_manager.ping()
@@ -44,6 +46,7 @@ async def _managed_repository_db(
 
 @pytest.fixture
 def repository_config_path(tmp_path: Path) -> Path:
+    """Возвращает путь к конфигу репозиториев."""
     return tmp_path / "repository_config.ini"
 
 
@@ -52,6 +55,7 @@ def repository_settings_manager(
     repository_config_path: Path,
     tmp_path: Path,
 ) -> SettingsManager:
+    """Готовит менеджер настроек репозиториев."""
     manager = SettingsManager(repository_config_path)
 
     manager.set_sqlite_path(str(tmp_path / "repository_tests.db"))
@@ -69,6 +73,7 @@ async def repository_async_db_manager(
     request: pytest.FixtureRequest,
     repository_settings_manager: SettingsManager,
 ) -> AsyncIterator[AsyncDBManager]:
+    """Готовит асинхронный менеджер БД репозиториев."""
     backend = request.param
 
     repository_settings_manager.set_backend(backend)
@@ -85,6 +90,7 @@ async def repository_async_db_manager(
 async def repository_memory_async_db_manager(
     request: pytest.FixtureRequest,
 ) -> AsyncIterator[AsyncDBManager]:
+    """Готовит асинхронный менеджер памяти репозиториев."""
     backend = request.param
     settings = DatabaseSettings(
         backend=backend,
@@ -99,6 +105,7 @@ async def repository_memory_async_db_manager(
 
 @pytest_asyncio.fixture
 async def repository_session(repository_async_db_manager: AsyncDBManager):
+    """Выдает сессию репозитория PostgreSQL."""
     async with repository_async_db_manager.session() as session:
         yield session
 
@@ -107,5 +114,6 @@ async def repository_session(repository_async_db_manager: AsyncDBManager):
 async def repository_memory_session(
     repository_memory_async_db_manager: AsyncDBManager,
 ):
+    """Выдает сессию репозитория в памяти."""
     async with repository_memory_async_db_manager.session() as session:
         yield session

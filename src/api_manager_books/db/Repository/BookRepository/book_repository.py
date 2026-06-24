@@ -25,6 +25,8 @@ class BookNotFoundError(Exception):
 
 @dataclass(frozen=True)
 class BookBinaryMeta:
+    """Метаданные бинарного файла книги."""
+
     content_type: str | None
     file_name: str | None
     size: int
@@ -38,6 +40,7 @@ class BookRepository:
     """
 
     def __init__(self, session: AsyncSession):
+        """Инициализировать репозиторий книг."""
         self._session = session
 
     async def create_book(
@@ -178,6 +181,7 @@ class BookRepository:
         offset: int = 0,
         limit: int = 100,
     ) -> Sequence[Book]:
+        """Получить книги автора."""
         return await self.list_books(author=author, offset=offset, limit=limit)
 
     async def get_by_series(
@@ -187,6 +191,7 @@ class BookRepository:
         offset: int = 0,
         limit: int = 100,
     ) -> Sequence[Book]:
+        """Получить книги серии."""
         return await self.list_books(series=series, offset=offset, limit=limit)
 
     async def update_book(
@@ -243,6 +248,7 @@ class BookRepository:
         return res.scalar_one_or_none()
 
     async def get_cover_meta(self, book_id: uuid.UUID) -> BookBinaryMeta | None:
+        """Получить метаданные обложки книги."""
         book = await self.get_by_id(book_id)
         if book is None or book.cover_size <= 0:
             return None
@@ -254,6 +260,7 @@ class BookRepository:
         )
 
     async def get_file_meta(self, book_id: uuid.UUID) -> BookBinaryMeta | None:
+        """Получить метаданные файла книги."""
         book = await self.get_by_id(book_id)
         if book is None or book.file_size <= 0:
             return None
@@ -265,18 +272,21 @@ class BookRepository:
         )
 
     async def get_cover_bytes(self, book_id: uuid.UUID) -> bytes | None:
+        """Получить байты обложки книги."""
         chunks = [chunk async for chunk in self.iter_cover_chunks(book_id)]
         if not chunks:
             return None
         return b"".join(chunks)
 
     async def get_file_bytes(self, book_id: uuid.UUID) -> bytes | None:
+        """Получить байты файла книги."""
         chunks = [chunk async for chunk in self.iter_file_chunks(book_id)]
         if not chunks:
             return None
         return b"".join(chunks)
 
     async def iter_cover_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        """Итерировать чанки обложки книги."""
         stmt = (
             select(BookCoverChunk.data)
             .where(BookCoverChunk.book_id == book_id)
@@ -287,6 +297,7 @@ class BookRepository:
             yield chunk
 
     async def iter_file_chunks(self, book_id: uuid.UUID) -> AsyncIterator[bytes]:
+        """Итерировать чанки файла книги."""
         stmt = (
             select(BookFileChunk.data)
             .where(BookFileChunk.book_id == book_id)
@@ -305,6 +316,7 @@ class BookRepository:
         content_type: str | None,
         preserve_meta: bool = False,
     ) -> None:
+        """Заменить чанки обложки книги."""
         await self._delete_chunks(BookCoverChunk, book.id)
         size = await self._store_chunks(
             BookCoverChunk,
@@ -329,6 +341,7 @@ class BookRepository:
         file_name: str | None,
         preserve_meta: bool = False,
     ) -> None:
+        """Заменить чанки файла книги."""
         await self._delete_chunks(BookFileChunk, book.id)
         size = await self._store_chunks(
             BookFileChunk,
@@ -348,6 +361,7 @@ class BookRepository:
         book.file_size = size
 
     async def _delete_chunks(self, chunk_model, book_id: uuid.UUID) -> None:
+        """Удалить чанки книги."""
         stmt = delete(chunk_model).where(chunk_model.book_id == book_id)
         await self._session.execute(stmt)
 
@@ -359,6 +373,7 @@ class BookRepository:
         payload: bytes | None,
         chunks: AsyncIterable[bytes] | None,
     ) -> int:
+        """Сохранить чанки книги."""
         if chunks is None and payload is None:
             return 0
 
@@ -385,6 +400,7 @@ class BookRepository:
         payload: bytes | None,
         chunks: AsyncIterable[bytes] | None,
     ) -> AsyncIterator[bytes]:
+        """Итерировать входные бинарные данные."""
         if chunks is not None:
             async for chunk in chunks:
                 if chunk:

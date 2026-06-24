@@ -17,6 +17,7 @@ def make_manager(config_path):
     """Фабрика для создания SettingsManager поверх одного и того же файла."""
 
     def _make():
+        """Создает временный конфиг настроек."""
         return SettingsManager(config_path)
 
     return _make
@@ -24,7 +25,9 @@ def make_manager(config_path):
 
 
 class Test_load_settings:
+    """Проверяет загрузку настроек."""
     def test_first_start(self,config_path,  make_manager):
+        """Проверяет первый запуск настроек."""
         settings = make_manager().settings
         assert  settings.database.backend == "sqlite"
         assert  settings.database.echo is False

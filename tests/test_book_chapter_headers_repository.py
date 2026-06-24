@@ -13,11 +13,13 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def book_repo(repository_memory_session) -> BookRepository:
+    """Готовит репозиторий книг."""
     return BookRepository(repository_memory_session)
 
 
 @pytest_asyncio.fixture
 async def chapter_repo(repository_memory_session) -> BookChapterRepository:
+    """Готовит репозиторий глав."""
     return BookChapterRepository(repository_memory_session)
 
 
@@ -25,6 +27,7 @@ async def test_list_chapter_headers_returns_only_names_in_chapter_order(
     book_repo: BookRepository,
     chapter_repo: BookChapterRepository,
 ):
+    """Проверяет список главу заголовки возвращает only names in главу order."""
     book = await book_repo.create_book(
         BookCreate(
             title="Book With Header List",

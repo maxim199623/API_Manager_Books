@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
 
 class BookChapter(Base):
+    """ORM-модель главы книги."""
+
     __tablename__ = "book_chapters"
 
     id: Mapped[uuid.UUID] = mapped_column(

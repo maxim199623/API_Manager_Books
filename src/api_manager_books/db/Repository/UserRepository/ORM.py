@@ -10,6 +10,8 @@ from api_manager_books.schemas.enums import UserRole
 
 
 class User(Base):
+    """ORM-модель пользователя."""
+
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(

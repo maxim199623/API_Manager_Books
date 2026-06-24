@@ -14,6 +14,7 @@ from api_manager_books.db.Manager.manager import AsyncDBManager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Управляет запуском и остановкой приложения."""
     # загружаем настройки
     settings = SettingsManager("config.ini")
 

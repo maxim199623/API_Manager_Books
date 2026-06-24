@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 
 class Book(Base):
+    """ORM-модель книги."""
+
     __tablename__ = "books"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -130,6 +132,8 @@ class Book(Base):
 
 
 class BookCoverChunk(Base):
+    """ORM-модель чанка обложки книги."""
+
     __tablename__ = "book_cover_chunks"
 
     book_id: Mapped[uuid.UUID] = mapped_column(
@@ -155,6 +159,8 @@ class BookCoverChunk(Base):
 
 
 class BookFileChunk(Base):
+    """ORM-модель чанка файла книги."""
+
     __tablename__ = "book_file_chunks"
 
     book_id: Mapped[uuid.UUID] = mapped_column(

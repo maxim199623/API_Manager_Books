@@ -12,6 +12,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def book_repo(repository_session) -> BookRepository:
+    """Готовит репозиторий книг."""
     return BookRepository(repository_session)
 
 
@@ -19,7 +20,9 @@ async def book_repo(repository_session) -> BookRepository:
 
 class TestBookRepository:
 
+    """Проверяет репозиторий книг."""
     async def test_create_and_get_by_id(self, book_repo: BookRepository):
+        """Проверяет создание и получение по ID."""
         cover_bytes = b"\x01\x02\x03"
         file_bytes = b"FAKE_BOOK_DATA"
 
@@ -54,6 +57,7 @@ class TestBookRepository:
 
     async def test_get_by_author_and_series(self, book_repo: BookRepository):
         # создаём несколько книг разных авторов и серий
+        """Проверяет поиск по автору и серии."""
         books_data = [
             BookCreate(
                 cover=None,
@@ -107,6 +111,7 @@ class TestBookRepository:
         assert titles_s1 == {"Book 1", "Book 3"}
 
     async def test_list_books_with_filters(self, book_repo: BookRepository):
+        """Проверяет список с фильтрами."""
         books_data = [
             BookCreate(
                 cover=None,
@@ -152,6 +157,7 @@ class TestBookRepository:
         assert {b.title for b in s1_books} == {"Book A1", "Book B1"}
 
     async def test_list_books_sorts_by_title(self, book_repo: BookRepository):
+        """Проверяет сортировку по названию."""
         for title in ["Gamma", "Alpha", "Beta"]:
             await book_repo.create_book(
                 BookCreate(
@@ -176,6 +182,7 @@ class TestBookRepository:
         book_repo: BookRepository,
         repository_session,
     ):
+        """Проверяет сортировку по дате создания."""
         older = await book_repo.create_book(
             BookCreate(
                 cover=None,
@@ -217,6 +224,7 @@ class TestBookRepository:
         book_repo: BookRepository,
         repository_session,
     ):
+        """Проверяет сортировку по прогрессу пользователя."""
         from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
         from api_manager_books.db.Repository.LogRepository.ORM import LogEntry
         from api_manager_books.db.Repository.UserRepository.ORM import User
@@ -345,6 +353,7 @@ class TestBookRepository:
         ]
 
     async def test_delete_book(self, book_repo: BookRepository):
+        """Проверяет удаляет книгу."""
         book = await book_repo.create_book(
             BookCreate(
                 cover=None,
@@ -368,6 +377,7 @@ class TestBookRepository:
         assert await book_repo.get_by_id(book.id) is None
 
     async def test_ensure_exists_success(self, book_repo: BookRepository):
+        """Проверяет ensure exists успех."""
         book = await book_repo.create_book(
             BookCreate(
                 cover=None,
@@ -383,10 +393,12 @@ class TestBookRepository:
         assert found.id == book.id
 
     async def test_ensure_exists_not_found(self, book_repo: BookRepository):
+        """Проверяет ошибку при отсутствии записи."""
         with pytest.raises(BookNotFoundError):
             await book_repo.ensure_exists(999999)
 
     async def test_update_book_partial(self, book_repo: BookRepository):
+        """Проверяет обновляет книгу partial."""
         cover_bytes = b"\x10\x20"
         file_bytes = b"DATA1"
 
@@ -440,6 +452,7 @@ class TestBookRepository:
         assert fetched.format == "oldfmt"
 
     async def test_update_book_replaces_binary_data_from_chunk_iterables(self, book_repo: BookRepository):
+        """Проверяет замену бинарных данных из чанков."""
         book = await book_repo.create_book(
             BookCreate(
                 cover=b"old-cover",
@@ -453,6 +466,7 @@ class TestBookRepository:
         )
 
         async def iter_chunks(*chunks: bytes):
+            """Итерирует тестовые чанки данных."""
             for chunk in chunks:
                 yield chunk
 

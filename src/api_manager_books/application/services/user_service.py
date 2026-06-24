@@ -9,6 +9,8 @@ from api_manager_books.security.passwords import verify_password
 
 
 class UserRecord(Protocol):
+    """Пользователь для сервисных сценариев."""
+
     id: uuid.UUID
     email: str
     password_hash: bytes
@@ -17,22 +19,30 @@ class UserRecord(Protocol):
 
 
 class UserStorage(Protocol):
+    """Хранилище пользователей."""
+
     async def get_by_email(self, email: str) -> UserRecord | None:
+        """Возвращает пользователя по email."""
         ...
 
     async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None) -> None:
+        """Обновляет идентификатор сессии пользователя."""
         ...
 
     async def create_user(self, data: UserCreate) -> UserRecord:
+        """Создает пользователя."""
         ...
 
     async def delete_user(self, user_id: uuid.UUID) -> bool:
+        """Удаляет пользователя по идентификатору."""
         ...
 
     async def list_users(self) -> Sequence[object]:
+        """Возвращает список пользователей."""
         ...
 
     async def ensure_exists(self, user_id: uuid.UUID) -> UserRecord:
+        """Возвращает существующего пользователя."""
         ...
 
     async def update_user(
@@ -43,11 +53,15 @@ class UserStorage(Protocol):
         password: str | None = None,
         role: UserRole | None = None,
     ) -> UserRecord | None:
+        """Обновляет пользователя."""
         ...
 
 
 class LogWriter(Protocol):
+    """Хранилище логов действий."""
+
     async def log_from_dto(self, payload: LogCreate) -> Any:
+        """Записывает лог из DTO."""
         ...
 
     async def log_action(
@@ -60,6 +74,7 @@ class LogWriter(Protocol):
         details: str | None = None,
         **extra_fields: Any,
     ) -> Any:
+        """Записывает лог действия."""
         ...
 
 
@@ -91,6 +106,7 @@ class UserNotFoundInServiceError(Exception):
 
 
 def _is_user_not_found_error(exc: Exception) -> bool:
+    """Проверяет ошибку отсутствующего пользователя."""
     return exc.__class__.__name__ == "UserNotFoundError"
 
 
@@ -104,6 +120,7 @@ class UserService:
         token_factory: Callable[[dict[str, Any]], str],
         notification_manager: NotificationManager,
     ):
+        """Инициализирует зависимости сервиса пользователей."""
         self._user_repo = user_repo
         self._log_repo = log_repo
         self._token_factory = token_factory

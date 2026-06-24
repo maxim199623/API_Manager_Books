@@ -19,6 +19,7 @@ from api_manager_books.schemas.users import UserRead
 
 
 class FakeChapterService:
+    """Фейковый сервис глав."""
     def __init__(
         self,
         *,
@@ -30,6 +31,7 @@ class FakeChapterService:
         add_error: Exception | None = None,
         update_error: Exception | None = None,
     ):
+        """Инициализирует тестовый объект."""
         self.headers = headers if headers is not None else []
         self.count_result = count_result
         self.chapter = chapter
@@ -44,12 +46,14 @@ class FakeChapterService:
         self.update_calls = []
 
     async def list_chapter_headers(self, book_id: uuid.UUID):
+        """Имитирует получение заголовков глав."""
         self.header_calls.append(book_id)
         if not self.book_exists:
             raise BookNotFoundError
         return self.headers
 
     async def count_chapters(self, book_id: uuid.UUID) -> tuple[uuid.UUID, int]:
+        """Имитирует подсчет глав."""
         self.count_calls.append(book_id)
         if not self.book_exists:
             raise BookNotFoundError
@@ -63,12 +67,14 @@ class FakeChapterService:
         book_id: uuid.UUID,
         chapter_num: int,
     ):
+        """Имитирует получение главы."""
         self.get_calls.append((user_id, book_id, chapter_num))
         if not self.chapter_exists:
             raise BookChapterNotFoundError
         return self.chapter
 
     async def add_chapters(self, user_id: uuid.UUID, book_id: uuid.UUID, chapters):
+        """Имитирует добавление глав."""
         self.add_calls.append((user_id, book_id, chapters))
         if self.add_error is not None:
             raise self.add_error
@@ -80,12 +86,14 @@ class FakeChapterService:
         chapter_num: int,
         payload,
     ):
+        """Имитирует обновление главы."""
         self.update_calls.append((user_id, book_id, chapter_num, payload))
         if self.update_error is not None:
             raise self.update_error
 
 
 def make_user() -> UserRead:
+    """Создает тестового пользователя."""
     return UserRead(
         id=uuid.uuid4(),
         email="reader@example.com",
@@ -96,6 +104,7 @@ def make_user() -> UserRead:
 
 
 def get_route(path: str, method: str):
+    """Ищет тестируемый роут."""
     return next(
         (
             route
@@ -107,6 +116,7 @@ def get_route(path: str, method: str):
 
 
 def make_chapter(book_id: uuid.UUID, chapter_num: int = 3):
+    """Создает тестовую главу."""
     return SimpleNamespace(
         id=uuid.uuid4(),
         book_id=book_id,
@@ -119,6 +129,7 @@ def make_chapter(book_id: uuid.UUID, chapter_num: int = 3):
 
 
 def test_chapter_collection_route_is_registered_with_light_response_model():
+    """Проверяет регистрацию роута."""
     route = get_route("/books/{book_id}/chapters", "GET")
 
     assert route is not None
@@ -126,6 +137,7 @@ def test_chapter_collection_route_is_registered_with_light_response_model():
 
 
 def test_chapter_count_route_is_registered_with_count_response_model():
+    """Проверяет регистрацию роута."""
     route = get_route("/books/{book_id}/chapters/count", "GET")
 
     assert route is not None
@@ -133,6 +145,7 @@ def test_chapter_count_route_is_registered_with_count_response_model():
 
 
 def test_single_chapter_route_is_registered_with_full_response_model():
+    """Проверяет регистрацию роута."""
     route = get_route("/books/{book_id}/chapters/{chapter_num}", "GET")
 
     assert route is not None
@@ -141,6 +154,7 @@ def test_single_chapter_route_is_registered_with_full_response_model():
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_light_chapter_headers():
+    """Проверяет получает книгу главы возвращает краткий главу заголовки."""
     book_id = uuid.uuid4()
     service = FakeChapterService(
         headers=[
@@ -166,6 +180,7 @@ async def test_get_book_chapters_returns_light_chapter_headers():
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_empty_list_for_existing_book_without_chapters():
+    """Проверяет ответ без глав у книги."""
     book_id = uuid.uuid4()
     service = FakeChapterService(headers=[])
 
@@ -181,6 +196,7 @@ async def test_get_book_chapters_returns_empty_list_for_existing_book_without_ch
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_404_when_book_is_missing():
+    """Проверяет возврат 404 при ошибке."""
     book_id = uuid.uuid4()
     service = FakeChapterService(
         headers=[SimpleNamespace(chapter=1, chapter_name="Hidden")],
@@ -201,6 +217,7 @@ async def test_get_book_chapters_returns_404_when_book_is_missing():
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_count_returns_count_response():
+    """Проверяет получает книгу главы считает возвращает считает ответ."""
     requested_book_id = uuid.uuid4()
     existing_book_id = uuid.uuid4()
     service = FakeChapterService(count_result=(existing_book_id, 6))
@@ -220,6 +237,7 @@ async def test_get_book_chapters_count_returns_count_response():
 
 @pytest.mark.asyncio
 async def test_get_book_chapters_count_returns_404_when_book_is_missing():
+    """Проверяет возврат 404 при ошибке."""
     book_id = uuid.uuid4()
     service = FakeChapterService(book_exists=False)
 
@@ -237,6 +255,7 @@ async def test_get_book_chapters_count_returns_404_when_book_is_missing():
 
 @pytest.mark.asyncio
 async def test_get_book_chapter_returns_full_chapter_response():
+    """Проверяет получает книгу главу возвращает полный главу ответ."""
     book_id = uuid.uuid4()
     chapter_num = 4
     user = make_user()
@@ -260,6 +279,7 @@ async def test_get_book_chapter_returns_full_chapter_response():
 
 @pytest.mark.asyncio
 async def test_get_book_chapter_returns_404_when_chapter_is_missing():
+    """Проверяет возврат 404 при ошибке."""
     book_id = uuid.uuid4()
     chapter_num = 5
     user = make_user()
@@ -280,6 +300,7 @@ async def test_get_book_chapter_returns_404_when_chapter_is_missing():
 
 @pytest.mark.asyncio
 async def test_add_book_chapters_calls_service():
+    """Проверяет вызов сервиса."""
     book_id = uuid.uuid4()
     user = make_user()
     chapters = [
@@ -317,6 +338,7 @@ async def test_add_book_chapters_calls_service():
     ],
 )
 async def test_add_book_chapters_maps_service_errors_to_http(error, status_code, detail):
+    """Проверяет преобразование ошибок сервиса."""
     book_id = uuid.uuid4()
     user = make_user()
     chapters = [
@@ -339,6 +361,7 @@ async def test_add_book_chapters_maps_service_errors_to_http(error, status_code,
 
 @pytest.mark.asyncio
 async def test_update_book_chapter_calls_service():
+    """Проверяет вызов сервиса."""
     book_id = uuid.uuid4()
     chapter_num = 2
     user = make_user()
@@ -359,6 +382,7 @@ async def test_update_book_chapter_calls_service():
 
 @pytest.mark.asyncio
 async def test_update_book_chapter_returns_404_when_chapter_is_missing():
+    """Проверяет возврат 404 при ошибке."""
     book_id = uuid.uuid4()
     chapter_num = 2
     user = make_user()

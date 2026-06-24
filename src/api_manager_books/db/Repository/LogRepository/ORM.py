@@ -8,6 +8,8 @@ from api_manager_books.db.base import Base
 
 
 class LogEntry(Base):
+    """ORM-модель записи лога."""
+
     __tablename__ = "db_logs"
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -22,6 +22,7 @@ async def logout(
     current_user: UserRead = Depends(require_auth),
     user_service: UserService = Depends(get_user_service),
 ):
+    """Завершает текущую сессию пользователя."""
     await user_service.logout(current_user.id)
     return
 

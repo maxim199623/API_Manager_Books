@@ -13,6 +13,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def log_repo(repository_session) -> LogRepository:
+    """Готовит репозиторий логов."""
     return LogRepository(repository_session)
 
 
@@ -20,7 +21,9 @@ async def log_repo(repository_session) -> LogRepository:
 
 class TestLogRepository:
 
+    """Проверяет репозиторий логов."""
     async def test_log_action_and_get_by_id(self, log_repo: LogRepository):
+        """Проверяет логирование и получение по ID."""
         entity_id = uuid.uuid4()
         entry = await log_repo.log_action(
             user_id=None,
@@ -46,6 +49,7 @@ class TestLogRepository:
         self,
         log_repo: LogRepository,
     ):
+        """Проверяет сохранение рабочей сессии после ошибки."""
         with pytest.raises(TypeError, match="entity_id"):
             await log_repo.log_action(
                 user_id=None,
@@ -67,6 +71,7 @@ class TestLogRepository:
         assert entry.entity_id == valid_entity_id
 
     async def test_log_from_dto(self, log_repo: LogRepository):
+        """Проверяет запись лога из DTO."""
         entity_id = uuid.uuid4()
         data = LogCreate(
             user_id=None,
@@ -84,6 +89,7 @@ class TestLogRepository:
         assert entry.details == f"Изменён пользователь #{entity_id}"
 
     async def test_list_logs_with_filters(self, log_repo: LogRepository):
+        """Проверяет список с фильтрами."""
         book_1_id = uuid.uuid4()
         book_2_id = uuid.uuid4()
         user_id = uuid.uuid4()
@@ -138,6 +144,7 @@ class TestLogRepository:
         assert {log_entry.action for log_entry in book1_logs} == {"create", "update"}
 
     async def test_list_logs_time_range(self, log_repo: LogRepository):
+        """Проверяет фильтрацию логов по времени."""
         entity_id = uuid.uuid4()
 
         # создаём логи
@@ -186,6 +193,7 @@ class TestLogRepository:
 
     async def test_delete_older_than(self, log_repo: LogRepository):
         # создаём несколько логов
+        """Проверяет удаление старых логов."""
         for i in range(3):
             await log_repo.log_action(
                 user_id=None,

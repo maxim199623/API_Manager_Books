@@ -14,6 +14,7 @@ async def websocket_endpoint(
     current_user: User = Depends(get_current_user_from_ws)
 
 ):
+    """Поддерживает WebSocket-канал уведомлений."""
     await manager.connect(websocket, current_user.id)
 
     try:

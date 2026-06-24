@@ -17,6 +17,7 @@ router = APIRouter(prefix="/books", tags=["book-files"])
 
 
 async def _iter_upload_chunks(upload: UploadFile):
+    """Итерирует загруженный файл чанками."""
     while True:
         chunk = await upload.read(BOOK_BINARY_CHUNK_SIZE)
         if not chunk:
@@ -30,6 +31,7 @@ async def get_book_cover(
     book_file_service: BookFileService = Depends(get_book_file_service),
     current_user: UserRead = Depends(require_auth),
 ):
+    """Возвращает обложку книги потоком."""
     meta = await book_file_service.get_cover_meta(book_id)
 
     if meta is None:
@@ -50,6 +52,7 @@ async def get_book_file(
     book_file_service: BookFileService = Depends(get_book_file_service),
     current_user: UserRead = Depends(require_auth),
 ):
+    """Возвращает файл книги потоком."""
     meta = await book_file_service.get_file_meta(book_id)
 
     if meta is None:
@@ -81,6 +84,7 @@ async def update_book_cover(
     book_file_service: BookFileService = Depends(get_book_file_service),
     current_user: UserRead = Depends(require_admin),
 ):
+    """Обновляет обложку книги."""
     try:
         await book_file_service.update_cover(
             current_user.id,
@@ -102,6 +106,7 @@ async def update_book_file(
     book_file_service: BookFileService = Depends(get_book_file_service),
     current_user: UserRead = Depends(require_admin),
 ):
+    """Обновляет файл книги."""
     try:
         await book_file_service.update_file(
             current_user.id,
