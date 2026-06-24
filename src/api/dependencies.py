@@ -2,6 +2,7 @@ from fastapi import Depends, Request
 from starlette.requests import HTTPConnection
 
 from src.DB.Manager.manager import AsyncDBManager
+from src.DB.base import Base
 from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
 from src.DB.Repository.BookRepository.book_repository import BookRepository
 from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
@@ -17,6 +18,7 @@ from src.application.services.reading_history_service import ReadingHistoryServi
 from src.application.services.settings_service import SettingsService
 from src.application.services.user_service import UserService
 from src.core.config import SettingsManager
+from src.schemas.config import DatabaseSettings
 
 
 def get_db_manager(conn: HTTPConnection) -> AsyncDBManager:
@@ -140,9 +142,17 @@ def get_settings_manager(request: Request) -> SettingsManager:
     return request.app.state.settings_manager
 
 
+def create_settings_db_manager(db_settings: DatabaseSettings) -> AsyncDBManager:
+    """Создаем менеджер базы данных для обновленных настроек."""
+    return AsyncDBManager(db_settings, Base)
+
+
 def get_settings_service(
     settings_manager: SettingsManager = Depends(get_settings_manager),
 ) -> SettingsService:
     """Получаем SettingsService"""
-    return SettingsService(settings_manager=settings_manager)
+    return SettingsService(
+        settings_manager=settings_manager,
+        db_manager_factory=create_settings_db_manager,
+    )
 

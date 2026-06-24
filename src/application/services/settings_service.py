@@ -2,11 +2,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from src.DB.Manager.manager import AsyncDBManager
-from src.DB.base import Base
 from src.schemas.api import SettingsResponse, SettingsUpdate
 from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
-from src.core.config import AppSettings, SettingsManager
+from src.core.config import AppSettings
 
 
 class DBManager(Protocol):
@@ -20,6 +18,18 @@ class DBManager(Protocol):
         ...
 
 
+class SettingsStore(Protocol):
+    @property
+    def settings(self) -> AppSettings:
+        ...
+
+    def replace_settings(self, settings: AppSettings) -> None:
+        ...
+
+    def save(self) -> None:
+        ...
+
+
 class SettingsMigrationError(Exception):
     """Ошибка миграции базы данных при смене backend."""
 
@@ -30,17 +40,13 @@ class SettingsUpdateResult:
     new_db_manager: DBManager
 
 
-def _create_db_manager(db_settings: DatabaseSettings) -> AsyncDBManager:
-    return AsyncDBManager(db_settings, Base)
-
-
 class SettingsService:
     """Сценарии чтения и обновления настроек приложения."""
 
     def __init__(
         self,
-        settings_manager: SettingsManager,
-        db_manager_factory: Callable[[DatabaseSettings], DBManager] = _create_db_manager,
+        settings_manager: SettingsStore,
+        db_manager_factory: Callable[[DatabaseSettings], DBManager],
     ):
         self._settings_manager = settings_manager
         self._db_manager_factory = db_manager_factory

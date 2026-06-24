@@ -242,3 +242,63 @@ def test_user_service_does_not_import_concrete_repository_classes() -> None:
             offenders.append(f"{path.relative_to(project_root)}:{node.lineno}")
 
     assert offenders == []
+
+
+def test_settings_service_does_not_import_concrete_settings_infrastructure() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    path = project_root / "src" / "application" / "services" / "settings_service.py"
+    forbidden_modules = {
+        "src.DB.Manager.manager",
+        "src.DB.base",
+        "src.core.config",
+    }
+    forbidden_from_imports = {
+        "src.core.config": {"SettingsManager"},
+    }
+    forbidden_from_modules = {"src.DB.Manager.manager", "src.DB.base"}
+    offenders: list[str] = []
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in forbidden_modules:
+                    offenders.append(
+                        f"{path.relative_to(project_root)}:{node.lineno} imports "
+                        f"forbidden module {alias.name}"
+                    )
+
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            imported_names = {alias.name for alias in node.names}
+            if module in forbidden_from_modules:
+                offenders.append(
+                    f"{path.relative_to(project_root)}:{node.lineno} imports "
+                    f"{', '.join(sorted(imported_names))} from forbidden module "
+                    f"{module}"
+                )
+
+            for forbidden_module, forbidden_names in forbidden_from_imports.items():
+                forbidden_direct_names = forbidden_names & imported_names
+                if module == forbidden_module and forbidden_direct_names:
+                    offenders.append(
+                        f"{path.relative_to(project_root)}:{node.lineno} imports "
+                        f"{', '.join(sorted(forbidden_direct_names))} from "
+                        f"{forbidden_module}"
+                    )
+
+            for alias in node.names:
+                imported_module = f"{module}.{alias.name}" if module else alias.name
+                if imported_module in forbidden_modules:
+                    offenders.append(
+                        f"{path.relative_to(project_root)}:{node.lineno} imports "
+                        f"forbidden module {imported_module} via {module}"
+                    )
+
+            if module in forbidden_modules and "*" in imported_names:
+                offenders.append(
+                    f"{path.relative_to(project_root)}:{node.lineno} imports "
+                    f"everything from forbidden module {module}"
+                )
+
+    assert offenders == []
