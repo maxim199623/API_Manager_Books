@@ -1,5 +1,6 @@
 import uuid
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 from api_manager_books.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 from api_manager_books.schemas.logs import LogCreate

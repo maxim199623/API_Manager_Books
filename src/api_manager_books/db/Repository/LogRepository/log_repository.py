@@ -1,6 +1,7 @@
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any
 
 from sqlalchemy import delete, func, join, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -295,5 +296,8 @@ class LogRepository:
             action="clear_read_history",
             entity="books",
             entity_id=book_id,
-            details=f"Пользователь #{user_id} очистил историю чтения книги #{book_id} (удалено {deleted_count} записей)",
+            details=(
+                f"Пользователь #{user_id} очистил историю чтения книги #{book_id} "
+                f"(удалено {deleted_count} записей)"
+            ),
         )

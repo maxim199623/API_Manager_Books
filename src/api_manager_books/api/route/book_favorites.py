@@ -19,11 +19,11 @@ async def favorite_book(
 ):
     try:
         await favorite_service.favorite_book(current_user.id, book_id)
-    except BookNotFoundError:
+    except BookNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
     return
 
 
@@ -35,9 +35,9 @@ async def unfavorite_book(
 ):
     try:
         await favorite_service.unfavorite_book(current_user.id, book_id)
-    except BookNotFoundError:
+    except BookNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
     return

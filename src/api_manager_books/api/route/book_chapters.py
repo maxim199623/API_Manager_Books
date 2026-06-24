@@ -37,26 +37,26 @@ async def add_book_chapters(
             book_id=book_id,
             chapters=chapters,
         )
-    except BookNotFoundError:
+    except BookNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
-    except EmptyChapterListError:
+        ) from err
+    except EmptyChapterListError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Chapter list cannot be empty",
-        )
-    except DuplicateChapterNumbersInRequestError:
+        ) from err
+    except DuplicateChapterNumbersInRequestError as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Duplicate chapter numbers in request",
-        )
-    except IntegrityError:
+        ) from err
+    except IntegrityError as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Duplicate chapter numbers for this book",
-        )
+        ) from err
     return
 
 
@@ -75,11 +75,11 @@ async def get_book_chapters(
     """
     try:
         chapters = await chapter_service.list_chapter_headers(book_id)
-    except BookNotFoundError:
+    except BookNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
 
     return [
         BookChapterListRead.model_validate(chapter, from_attributes=True)
@@ -98,11 +98,11 @@ async def get_book_chapters_count(
     """
     try:
         existing_book_id, count = await chapter_service.count_chapters(book_id)
-    except BookNotFoundError:
+    except BookNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
 
     return ChaptersCountResponse(
         book_id=existing_book_id,
@@ -128,11 +128,11 @@ async def update_book_chapter(
             chapter_num=chapter_num,
             payload=payload,
         )
-    except BookChapterNotFoundError:
+    except BookChapterNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Chapter not found",
-        )
+        ) from err
 
     return
 
@@ -152,11 +152,11 @@ async def get_book_chapter(
             book_id=book_id,
             chapter_num=chapter_num,
         )
-    except BookChapterNotFoundError:
+    except BookChapterNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Chapter not found",
-        )
+        ) from err
 
     # явная конвертация ORM -> Pydantic
 

@@ -159,7 +159,7 @@ class TestUserRepository:
         assert fetched.role == UserRole.ADMIN
 
     async def test_update_user_email_to_existing_should_fail(self, user_repo: UserRepository):
-        u1 = await user_repo.create_user(
+        await user_repo.create_user(
             UserCreate(
                 email="user_a@mail.com",
                 password="pass-a",

@@ -124,31 +124,31 @@ class TestLogRepository:
 
         # фильтр по action=create
         creates = await log_repo.list_logs(action="create")
-        assert {l.action for l in creates} == {"create"}
+        assert {log_entry.action for log_entry in creates} == {"create"}
         assert len(creates) == 2
 
         # фильтр по entity=books
         books_logs = await log_repo.list_logs(entity="books")
-        assert {l.entity for l in books_logs} == {"books"}
+        assert {log_entry.entity for log_entry in books_logs} == {"books"}
         assert len(books_logs) == 3
 
         # фильтр по entity_id
         book1_logs = await log_repo.list_logs(entity="books", entity_id=book_1_id)
         assert len(book1_logs) == 2
-        assert {l.action for l in book1_logs} == {"create", "update"}
+        assert {log_entry.action for log_entry in book1_logs} == {"create", "update"}
 
     async def test_list_logs_time_range(self, log_repo: LogRepository):
         entity_id = uuid.uuid4()
 
         # создаём логи
-        e1 = await log_repo.log_action(
+        await log_repo.log_action(
             user_id=None,
             action="create",
             entity="books",
             entity_id=entity_id,
             details="log 1",
         )
-        e2 = await log_repo.log_action(
+        await log_repo.log_action(
             user_id=None,
             action="update",
             entity="books",
@@ -160,8 +160,8 @@ class TestLogRepository:
         all_logs = await log_repo.list_logs(entity="books", entity_id=entity_id)
         assert len(all_logs) >= 2
 
-        oldest = min(l.created_at for l in all_logs)
-        newest = max(l.created_at for l in all_logs)
+        oldest = min(log_entry.created_at for log_entry in all_logs)
+        newest = max(log_entry.created_at for log_entry in all_logs)
 
         # окно, которое точно включает эти логи
         from datetime import timedelta
@@ -198,7 +198,7 @@ class TestLogRepository:
         all_logs = await log_repo.list_logs()
         assert len(all_logs) >= 3
 
-        newest = max(l.created_at for l in all_logs)
+        newest = max(log_entry.created_at for log_entry in all_logs)
 
         from datetime import timedelta
         # порог в будущем относительно всех текущих логов — должны удалиться все

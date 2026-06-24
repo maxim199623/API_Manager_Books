@@ -1,6 +1,7 @@
 import uuid
+from collections.abc import AsyncIterable, AsyncIterator, Sequence
 from dataclasses import dataclass
-from typing import AsyncIterable, AsyncIterator, Literal, Sequence
+from typing import Literal
 
 from sqlalchemy import case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession

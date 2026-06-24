@@ -1,5 +1,6 @@
 import uuid
-from typing import Any, AsyncIterable, AsyncIterator, Callable, Protocol
+from collections.abc import AsyncIterable, AsyncIterator, Callable
+from typing import Any, Protocol
 
 from api_manager_books.schemas.books import BookUpdate
 from api_manager_books.schemas.logs import LogCreate

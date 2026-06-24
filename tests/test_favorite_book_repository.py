@@ -56,7 +56,7 @@ class TestFavoriteBookRepository:
                 file=None,
             )
         )
-        second_book = await book_repo.create_book(
+        await book_repo.create_book(
             BookCreate(
                 cover=None,
                 title="Favorite Book 2",
@@ -68,7 +68,7 @@ class TestFavoriteBookRepository:
                 file=None,
             )
         )
-        third_book = await book_repo.create_book(
+        await book_repo.create_book(
             BookCreate(
                 cover=None,
                 title="Favorite Book 3",

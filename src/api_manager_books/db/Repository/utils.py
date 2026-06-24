@@ -1,12 +1,10 @@
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy.inspection import inspect as sa_inspect
 
-TModel = TypeVar("TModel")
 
-
-def build_model_from_schema(
+def build_model_from_schema[TModel](
     model_cls: type[TModel],
     schema_obj: BaseModel,
     extra: dict[str, Any] | None = None,

@@ -1,5 +1,6 @@
 import uuid
-from typing import Any, Callable, Protocol, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any, Protocol
 
 from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.logs import LogCreate

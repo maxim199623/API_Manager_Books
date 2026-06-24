@@ -58,11 +58,11 @@ async def add_book(
             cover_chunks=_iter_upload_chunks(cover) if cover else None,
             file_chunks=_iter_upload_chunks(file) if file else None,
         )
-    except BookAlreadyExistsError:
+    except BookAlreadyExistsError as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Book already exists",
-        )
+        ) from err
 
     return {"id": book_id}
 
@@ -122,11 +122,11 @@ async def update_book(
             book_id,
             payload,
         )
-    except BookNotFoundInServiceError:
+    except BookNotFoundInServiceError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
     return
 
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -143,10 +143,10 @@ async def delete_book(
 
     try:
         await book_service.delete_book(current_user.id, book_id)
-    except BookNotFoundInServiceError:
+    except BookNotFoundInServiceError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
 
     return

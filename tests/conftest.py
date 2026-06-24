@@ -1,16 +1,8 @@
-import sys
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator
 
 import pytest
 import pytest_asyncio
-
-# Корень проекта: .../
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-# Добавляем корень проекта в sys.path, если его там ещё нет
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 from api_manager_books.config.config import SettingsManager
 from api_manager_books.db.base import Base

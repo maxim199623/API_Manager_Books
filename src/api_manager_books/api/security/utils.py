@@ -34,16 +34,16 @@ async def get_current_user(
     token = credentials.credentials
     try:
         payload = decode_access_token(token)
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
-        )
-    except jwt.InvalidTokenError:
+        ) from err
+    except jwt.InvalidTokenError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
-        )
+        ) from err
     user_id = payload.get("sub")
     token_sid = uuid.UUID(payload.get("sid"))
     if user_id is None or token_sid is None:
@@ -54,11 +54,11 @@ async def get_current_user(
 
     try:
         user_id = uuid.UUID(payload["sub"])
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token subject",
-        )
+        ) from err
 
     user = await user_repo.get_by_id(user_id)
     if user is None:

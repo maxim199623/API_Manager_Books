@@ -36,11 +36,11 @@ async def login(
     """
     try:
         token = await user_service.login(payload.email, payload.password)
-    except InvalidCredentialsError:
+    except InvalidCredentialsError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
-        )
+        ) from err
     return TokenResponse(access_token=token)
 
 @router.post("/add_user", status_code=status.HTTP_201_CREATED)
@@ -52,16 +52,16 @@ async def add_user(
     """Добавления пользователя"""
     try:
         return await user_service.add_user(payload, current_user)
-    except UserAlreadyExistsError:
+    except UserAlreadyExistsError as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User already exists",
-        )
-    except FirstUserMustBeAdminError:
+        ) from err
+    except FirstUserMustBeAdminError as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="First user must be an admin",
-        )
+        ) from err
 
 @router.get("/get_users", response_model=list[UserRead])
 async def get_users(
@@ -98,15 +98,15 @@ async def patch_user(
     """Обновление пользователя"""
     try:
         await user_service.update_user(user_id, payload, current_user)
-    except UserNotFoundInServiceError:
+    except UserNotFoundInServiceError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
-        )
-    except UserUpdateFailedError:
+        ) from err
+    except UserUpdateFailedError as err:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="User not update",
-        )
+        ) from err
 
     return

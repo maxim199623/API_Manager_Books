@@ -44,7 +44,7 @@ class ConnectionManager:
             for ws in list(self.active_connections[user_id]):
                 try:
                     await ws.close(code=4001, reason="Session replaced")
-                except:
+                except Exception:
                     pass
             del self.active_connections[user_id]
 

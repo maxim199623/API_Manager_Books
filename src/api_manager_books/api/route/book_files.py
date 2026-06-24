@@ -88,11 +88,11 @@ async def update_book_cover(
             cover.content_type,
             _iter_upload_chunks(cover),
         )
-    except BookFileNotFoundInServiceError:
+    except BookFileNotFoundInServiceError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
 
 
 @router.put("/{book_id}/file", status_code=status.HTTP_204_NO_CONTENT)
@@ -110,8 +110,8 @@ async def update_book_file(
             file.content_type,
             _iter_upload_chunks(file),
         )
-    except BookFileNotFoundInServiceError:
+    except BookFileNotFoundInServiceError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err

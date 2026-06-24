@@ -48,11 +48,11 @@ async def get_read_chapters_count(
             user_id=current_user.id,
             book_id=book_id,
         )
-    except BookNotFoundError:
+    except BookNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not found",
-        )
+        ) from err
 
     return {"book_id": book_id, "read_chapters": count}
 

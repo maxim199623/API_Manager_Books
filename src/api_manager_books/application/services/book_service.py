@@ -1,5 +1,6 @@
 import uuid
-from typing import Any, AsyncIterable, Literal, Protocol, Sequence
+from collections.abc import AsyncIterable, Sequence
+from typing import Any, Literal, Protocol
 
 from api_manager_books.schemas.books import (
     BookCreate,
