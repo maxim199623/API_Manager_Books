@@ -2,8 +2,6 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from api_manager_books.schemas.api import AuthRequest, TokenResponse
-from api_manager_books.schemas.users import UserCreate, UserRead, UserUpdate
 from api_manager_books.api.dependencies import get_user_service
 from api_manager_books.api.security.utils import require_admin, require_auth
 from api_manager_books.application.services.user_service import (
@@ -14,6 +12,8 @@ from api_manager_books.application.services.user_service import (
     UserService,
     UserUpdateFailedError,
 )
+from api_manager_books.schemas.api import AuthRequest, TokenResponse
+from api_manager_books.schemas.users import UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 

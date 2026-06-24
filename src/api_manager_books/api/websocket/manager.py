@@ -1,11 +1,11 @@
 import uuid
 
 from fastapi import WebSocket
-from typing import Dict, Set
+
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[uuid.UUID, Set[WebSocket]] = {}
+        self.active_connections: dict[uuid.UUID, set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, user_id: uuid.UUID):
         await websocket.accept()

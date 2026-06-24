@@ -4,7 +4,6 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
-from api_manager_books.schemas.users import UserRead
 from api_manager_books.api.dependencies import get_book_file_service
 from api_manager_books.api.security.utils import require_admin, require_auth
 from api_manager_books.application.services.book_file_service import (
@@ -12,6 +11,7 @@ from api_manager_books.application.services.book_file_service import (
     BookFileNotFoundInServiceError,
     BookFileService,
 )
+from api_manager_books.schemas.users import UserRead
 
 router = APIRouter(prefix="/books", tags=["book-files"])
 

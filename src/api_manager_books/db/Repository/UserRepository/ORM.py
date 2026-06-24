@@ -1,14 +1,13 @@
+import uuid
 from datetime import datetime
 
-import uuid
-
-from sqlalchemy import String, DateTime, func, LargeBinary
+from sqlalchemy import DateTime, LargeBinary, String, func
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import Uuid
 
 from api_manager_books.db.base import Base
 from api_manager_books.schemas.enums import UserRole
 
-from sqlalchemy.types import Uuid
 
 class User(Base):
     __tablename__ = "users"

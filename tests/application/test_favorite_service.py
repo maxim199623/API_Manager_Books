@@ -2,8 +2,8 @@ import uuid
 
 import pytest
 
-from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
 from api_manager_books.application.services.favorite_service import FavoriteService
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
 
 
 class FakeBookRepo:

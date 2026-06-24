@@ -1,13 +1,13 @@
-from dataclasses import dataclass
 import uuid
+from dataclasses import dataclass
 from typing import Sequence
 
-from sqlalchemy import select, delete, func
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
+from api_manager_books.db.Repository.utils import build_model_from_schema, patch_model_from_schema
 from api_manager_books.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
-from api_manager_books.db.Repository.utils import patch_model_from_schema, build_model_from_schema
 
 
 class BookChapterNotFoundError(Exception):

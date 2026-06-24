@@ -1,15 +1,13 @@
 from pathlib import Path
-from typing import Tuple
 
-from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 KEY_DIR = Path(__file__).resolve().parent
 PRIVATE_KEY_PATH = KEY_DIR / "jwt_private.pem"
 PUBLIC_KEY_PATH = KEY_DIR / "jwt_public.pem"
 
-def _generate_rsa_key_pair() -> Tuple[bytes, bytes]:
+def _generate_rsa_key_pair() -> tuple[bytes, bytes]:
     """
     Генерирует пару RSA-ключей и возвращает (private_pem, public_pem) в виде bytes.
     """
@@ -33,7 +31,7 @@ def _generate_rsa_key_pair() -> Tuple[bytes, bytes]:
     return private_pem, public_pem
 
 
-def ensure_jwt_keys() -> Tuple[bytes, bytes]:
+def ensure_jwt_keys() -> tuple[bytes, bytes]:
     """
     Проверяет наличие файлов с ключами.
     Если нет — создаёт директорию keys/ и генерирует новую пару ключей.

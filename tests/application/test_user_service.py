@@ -3,10 +3,12 @@ from datetime import datetime
 
 import pytest
 
-from api_manager_books.schemas.users import UserRead, UserUpdate
-from api_manager_books.db.Repository.UserRepository.user_repository import UserNotFoundError as RepositoryUserNotFoundError
 from api_manager_books.application.services import user_service as user_service_module
 from api_manager_books.application.services.user_service import UserService
+from api_manager_books.db.Repository.UserRepository.user_repository import (
+    UserNotFoundError as RepositoryUserNotFoundError,
+)
+from api_manager_books.schemas.users import UserRead, UserUpdate
 
 
 class FakeUserRepo:

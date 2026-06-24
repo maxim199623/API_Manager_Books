@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Integer, String, Text, DateTime, func, ForeignKey, Uuid
+from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api_manager_books.db.base import Base
+
 
 class LogEntry(Base):
     __tablename__ = "db_logs"

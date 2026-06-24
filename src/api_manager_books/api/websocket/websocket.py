@@ -1,11 +1,10 @@
 
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from api_manager_books.api.security.utils import get_current_user_from_ws
-from api_manager_books.db.Repository import User
 from api_manager_books.api.websocket import manager
-
+from api_manager_books.db.Repository import User
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 

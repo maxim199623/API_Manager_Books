@@ -2,7 +2,7 @@ import uuid
 from typing import Sequence
 
 from pydantic import EmailStr
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from api_manager_books.db.Repository.UserRepository.ORM import User
 from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserCreate
 from api_manager_books.security.passwords import hash_password
+
 
 class EmailAlreadyExistsError(Exception):
     pass

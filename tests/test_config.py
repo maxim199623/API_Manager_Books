@@ -5,6 +5,7 @@ import pytest
 
 from api_manager_books.config.config import SettingsManager
 
+
 @pytest.fixture
 def config_path(tmp_path) -> Path:
     """Путь к временному config.ini для каждого теста."""

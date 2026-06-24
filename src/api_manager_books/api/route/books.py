@@ -3,12 +3,6 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
-from api_manager_books.schemas.books import (
-    BookCreate,
-    BookListRead,
-    BookMetadataUpdate,
-)
-from api_manager_books.schemas.users import UserRead
 from api_manager_books.api.dependencies import get_book_service
 from api_manager_books.api.route.book_favorites import favorite_book, unfavorite_book  # noqa: F401
 from api_manager_books.api.route.book_files import _iter_upload_chunks
@@ -18,6 +12,12 @@ from api_manager_books.application.services.book_service import (
     BookNotFoundInServiceError,
     BookService,
 )
+from api_manager_books.schemas.books import (
+    BookCreate,
+    BookListRead,
+    BookMetadataUpdate,
+)
+from api_manager_books.schemas.users import UserRead
 
 router = APIRouter(prefix="/books", tags=["books"])
 

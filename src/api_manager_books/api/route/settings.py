@@ -1,11 +1,11 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from api_manager_books.schemas.users import UserRead
 from api_manager_books.api.dependencies import get_settings_service
-from api_manager_books.schemas.api import SettingsResponse, SettingsUpdate
 from api_manager_books.api.security.utils import require_admin
 from api_manager_books.application.services.settings_service import SettingsMigrationError, SettingsService
+from api_manager_books.schemas.api import SettingsResponse, SettingsUpdate
+from api_manager_books.schemas.users import UserRead
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

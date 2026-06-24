@@ -1,6 +1,7 @@
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import jwt
-from typing import Any, Dict
-from datetime import datetime, timedelta, timezone
 
 from api_manager_books.api.security.cert.jwt_keys import ensure_jwt_keys
 
@@ -10,7 +11,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 PRIVATE_KEY_PEM, PUBLIC_KEY_PEM = ensure_jwt_keys()
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """
     Создать JWT access token, подписанный приватным RSA-ключом.
     """
@@ -19,7 +20,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
     if expires_delta is None:
         expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     to_encode.update({"exp": expire})
 
     encoded_jwt = jwt.encode(to_encode, PRIVATE_KEY_PEM, algorithm=ALGORITHM)

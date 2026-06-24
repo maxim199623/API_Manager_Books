@@ -1,16 +1,15 @@
 import uuid
 from datetime import datetime
-from typing import Sequence, Any
+from typing import Any, Sequence
 
-from sqlalchemy import select, delete, join, func
+from sqlalchemy import delete, func, join, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect as sa_inspect
 
 from api_manager_books.db.Repository import BookChapter
 from api_manager_books.db.Repository.LogRepository.ORM import LogEntry
+from api_manager_books.db.Repository.utils import build_model_from_schema
 from api_manager_books.schemas.logs import LogCreate
-
-from api_manager_books.db.Repository.utils import patch_model_from_schema, build_model_from_schema
 
 
 def _validate_uuid_or_none(value: uuid.UUID | None, field_name: str) -> None:

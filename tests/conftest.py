@@ -13,8 +13,8 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from api_manager_books.config.config import SettingsManager
-from api_manager_books.db.Manager.manager import AsyncDBManager
 from api_manager_books.db.base import Base
+from api_manager_books.db.Manager.manager import AsyncDBManager
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
 REPOSITORY_BACKENDS = ("sqlite", "postgres")

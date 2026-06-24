@@ -1,8 +1,12 @@
 import pytest
 import pytest_asyncio
 
+from api_manager_books.db.Repository.UserRepository.user_repository import (
+    EmailAlreadyExistsError,
+    UserNotFoundError,
+    UserRepository,
+)
 from api_manager_books.schemas.enums import UserRole
-from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository, EmailAlreadyExistsError, UserNotFoundError
 from api_manager_books.schemas.users import UserCreate
 from api_manager_books.security.passwords import verify_password
 

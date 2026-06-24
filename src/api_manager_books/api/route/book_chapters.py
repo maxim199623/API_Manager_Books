@@ -3,23 +3,23 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from api_manager_books.schemas.book_chapters import (
-    BookChapterCreate,
-    BookChapterListRead,
-    BookChapterRead,
-    BookChapterUpdate,
-)
-from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
-from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
-from api_manager_books.schemas.users import UserRead
 from api_manager_books.api.dependencies import get_chapter_service
-from api_manager_books.schemas.api import ChaptersCountResponse
 from api_manager_books.api.security.utils import require_admin, require_auth
 from api_manager_books.application.services.chapter_service import (
     ChapterService,
     DuplicateChapterNumbersInRequestError,
     EmptyChapterListError,
 )
+from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
+from api_manager_books.schemas.api import ChaptersCountResponse
+from api_manager_books.schemas.book_chapters import (
+    BookChapterCreate,
+    BookChapterListRead,
+    BookChapterRead,
+    BookChapterUpdate,
+)
+from api_manager_books.schemas.users import UserRead
 
 router = APIRouter(prefix="/books", tags=["book-chapters"])
 

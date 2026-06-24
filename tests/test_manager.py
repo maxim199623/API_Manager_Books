@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from sqlalchemy import Integer, String, select, inspect
+from sqlalchemy import Integer, String, inspect, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from api_manager_books.config.config import SettingsManager

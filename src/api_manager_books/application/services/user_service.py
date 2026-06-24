@@ -1,8 +1,8 @@
 import uuid
 from typing import Any, Callable, Protocol, Sequence
 
-from api_manager_books.schemas.logs import LogCreate
 from api_manager_books.schemas.enums import UserRole
+from api_manager_books.schemas.logs import LogCreate
 from api_manager_books.schemas.users import UserCreate, UserRead, UserUpdate
 from api_manager_books.security.passwords import verify_password
 

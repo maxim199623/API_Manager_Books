@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Type
+from typing import AsyncIterator
 
-from sqlalchemy import text, select
-from sqlalchemy.ext.asyncio import AsyncEngine,AsyncSession,async_sessionmaker,create_async_engine
+from sqlalchemy import event, select, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import event
 
 from api_manager_books.config.config import DatabaseSettings
+
 
 class AsyncDBManager:
     """
@@ -16,7 +16,7 @@ class AsyncDBManager:
     - выдаёт сессии через async context manager;
     """
 
-    def __init__(self, db_settings: DatabaseSettings, base: Type[DeclarativeBase]):
+    def __init__(self, db_settings: DatabaseSettings, base: type[DeclarativeBase]):
         self._settings = db_settings
         self._base = base
 

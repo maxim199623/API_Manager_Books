@@ -1,25 +1,22 @@
 import uuid
+from datetime import UTC, datetime, timedelta
+from ipaddress import IPv4Address
+from pathlib import Path
 
 import jwt
-from fastapi import Depends, HTTPException, status, WebSocket, WebSocketException, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-from api_manager_books.db.Repository import User
-from api_manager_books.schemas.enums import UserRole
-from api_manager_books.schemas.users import UserRead
-from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
-from api_manager_books.api.dependencies import get_user_repo
-from api_manager_books.api.security.jwt_tokens import decode_access_token
-
-from pathlib import Path
-from datetime import datetime, timedelta, UTC
-
 from cryptography import x509
-from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from ipaddress import IPv4Address
+from cryptography.x509.oid import NameOID
+from fastapi import Depends, HTTPException, Query, WebSocket, WebSocketException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from api_manager_books.api.dependencies import get_user_repo
+from api_manager_books.api.security.jwt_tokens import decode_access_token
+from api_manager_books.db.Repository import User
+from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
+from api_manager_books.schemas.enums import UserRole
+from api_manager_books.schemas.users import UserRead
 
 security_bearer = HTTPBearer(auto_error=False)
 async def get_current_user(

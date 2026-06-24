@@ -1,23 +1,23 @@
 from fastapi import Depends, Request
 from starlette.requests import HTTPConnection
 
-from api_manager_books.db.Manager.manager import AsyncDBManager
-from api_manager_books.db.base import Base
-from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
-from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
-from api_manager_books.db.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
-from api_manager_books.db.Repository.LogRepository.log_repository import LogRepository
-from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
 from api_manager_books.api.security.jwt_tokens import create_access_token
 from api_manager_books.api.websocket import manager as ws_manager
-from api_manager_books.application.services.book_service import BookService
 from api_manager_books.application.services.book_file_service import BookFileService
+from api_manager_books.application.services.book_service import BookService
 from api_manager_books.application.services.chapter_service import ChapterService
 from api_manager_books.application.services.favorite_service import FavoriteService
 from api_manager_books.application.services.reading_history_service import ReadingHistoryService
 from api_manager_books.application.services.settings_service import SettingsService
 from api_manager_books.application.services.user_service import UserService
 from api_manager_books.config.config import SettingsManager
+from api_manager_books.db.base import Base
+from api_manager_books.db.Manager.manager import AsyncDBManager
+from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
+from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
+from api_manager_books.db.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
+from api_manager_books.db.Repository.LogRepository.log_repository import LogRepository
+from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
 from api_manager_books.schemas.config import DatabaseSettings
 
 

@@ -2,9 +2,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
+from api_manager_books.config.config import AppSettings
 from api_manager_books.schemas.api import SettingsResponse, SettingsUpdate
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
-from api_manager_books.config.config import AppSettings
 
 
 class DBManager(Protocol):

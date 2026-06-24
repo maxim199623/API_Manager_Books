@@ -1,18 +1,18 @@
+import uuid
 from datetime import datetime
 from types import SimpleNamespace
-import uuid
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from api_manager_books.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
-from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
-from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
 from api_manager_books.application.services.chapter_service import (
     ChapterService,
     DuplicateChapterNumbersInRequestError,
     EmptyChapterListError,
 )
+from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterNotFoundError
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
+from api_manager_books.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 
 
 class FakeBookRepo:

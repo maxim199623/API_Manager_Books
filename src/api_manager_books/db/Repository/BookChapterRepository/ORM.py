@@ -3,16 +3,17 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    Integer,
-    Text,
     DateTime,
-    func,
     ForeignKey,
-    UniqueConstraint, LargeBinary, Uuid,
+    Integer,
+    LargeBinary,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from api_manager_books.db.Repository.utils import build_model_from_schema
 from api_manager_books.db.base import Base
 
 if TYPE_CHECKING:

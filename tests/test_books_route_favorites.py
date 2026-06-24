@@ -1,9 +1,9 @@
 import ast
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-import uuid
 
 import pytest
 from fastapi import HTTPException, UploadFile
@@ -13,15 +13,15 @@ from starlette.datastructures import Headers
 from api_manager_books.api.route import book_files as book_files_route
 from api_manager_books.api.route import books as books_route
 from api_manager_books.api.route.books import get_books
-from api_manager_books.schemas import books as book_shems
-from api_manager_books.schemas.books import BookListRead
+from api_manager_books.application.services.book_file_service import BookFileNotFoundInServiceError
 from api_manager_books.db.Repository.BookRepository.book_repository import (
     BOOK_BINARY_CHUNK_SIZE,
     BookNotFoundError,
 )
+from api_manager_books.schemas import books as book_shems
+from api_manager_books.schemas.books import BookListRead
 from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserRead
-from api_manager_books.application.services.book_file_service import BookFileNotFoundInServiceError
 
 
 def test_books_route_imports_book_dtos_from_schemas_package() -> None:
@@ -546,14 +546,14 @@ async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
 
 
 def test_book_metadata_update_rejects_binary_fields_after_split_endpoints():
-    payload_cls = getattr(book_shems, "BookMetadataUpdate")
+    payload_cls = book_shems.BookMetadataUpdate
 
     with pytest.raises(ValidationError):
         payload_cls.model_validate({"cover": "Y292ZXI=", "title": "Ignored"})
 
 
 def test_book_metadata_update_accepts_metadata_fields():
-    payload_cls = getattr(book_shems, "BookMetadataUpdate")
+    payload_cls = book_shems.BookMetadataUpdate
 
     payload = payload_cls.model_validate({"title": "Updated title", "description": "Changed"})
 

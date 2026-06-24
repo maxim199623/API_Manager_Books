@@ -4,13 +4,11 @@ from fastapi import FastAPI
 
 # Импорт регистрирует ORM-модели в metadata SQLAlchemy.
 import api_manager_books.db.models  # noqa: F401
-from api_manager_books.db.Manager.manager import AsyncDBManager
-from api_manager_books.db.base import Base
-from api_manager_books.config.config import SettingsManager
-
 from api_manager_books.api import main_router
-
 from api_manager_books.bootstrap.admin import create_default_admin
+from api_manager_books.config.config import SettingsManager
+from api_manager_books.db.base import Base
+from api_manager_books.db.Manager.manager import AsyncDBManager
 
 # --------- LIFESPAN: старт/остановка приложения ---------
 

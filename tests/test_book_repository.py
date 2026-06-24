@@ -1,7 +1,9 @@
+from datetime import UTC
+
 import pytest
 import pytest_asyncio
 
-from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository, BookNotFoundError
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError, BookRepository
 from api_manager_books.schemas.books import BookCreate, BookUpdate
 
 pytestmark = pytest.mark.asyncio
@@ -197,9 +199,9 @@ class TestBookRepository:
             )
         )
 
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        base_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        base_time = datetime(2026, 1, 1, tzinfo=UTC)
         older.created_at = base_time
         newer.created_at = base_time + timedelta(days=1)
         await repository_session.flush()
@@ -217,8 +219,8 @@ class TestBookRepository:
     ):
         from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
         from api_manager_books.db.Repository.LogRepository.ORM import LogEntry
-        from api_manager_books.schemas.enums import UserRole
         from api_manager_books.db.Repository.UserRepository.ORM import User
+        from api_manager_books.schemas.enums import UserRole
 
         user = User(
             email="progress-reader@example.com",

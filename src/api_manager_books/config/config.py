@@ -1,8 +1,10 @@
 from configparser import ConfigParser
 from pathlib import Path
+
 from pydantic import BaseModel
 
-from api_manager_books.schemas.config import SQLiteSettings, DatabaseSettings, PostgresSettings
+from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
+
 
 class AppSettings(BaseModel):
     database: DatabaseSettings
