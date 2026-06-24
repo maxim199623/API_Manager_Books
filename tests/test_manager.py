@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import Integer, String, select, inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from src.core.config import SettingsManager
-from src.DB.Manager.manager import AsyncDBManager
+from api_manager_books.config.config import SettingsManager
+from api_manager_books.db.Manager.manager import AsyncDBManager
 
 # ---------- Локальная база и тестовая таблица ----------
 

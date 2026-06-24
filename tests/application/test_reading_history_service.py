@@ -2,8 +2,8 @@ import uuid
 
 import pytest
 
-from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.application.services.reading_history_service import ReadingHistoryService
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
+from api_manager_books.application.services.reading_history_service import ReadingHistoryService
 
 
 class FakeBookRepo:

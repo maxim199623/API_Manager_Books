@@ -261,6 +261,7 @@ cython_debug/
 /Тест
 /src/api/security/cert/jwt_private.pem
 /src/api/security/cert/jwt_public.pem
+/src/api_manager_books/api/security/cert/jwt_*.pem
 /.worktrees/
 /docs/superpowers/plans/2026-05-22-favorite-books.md
 /docs/superpowers/specs/2026-05-22-favorite-books-design.md

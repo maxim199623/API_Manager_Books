@@ -10,18 +10,18 @@ from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
 from starlette.datastructures import Headers
 
-from src.api.route import book_files as book_files_route
-from src.api.route import books as books_route
-from src.api.route.books import get_books
-from src.schemas import books as book_shems
-from src.schemas.books import BookListRead
-from src.DB.Repository.BookRepository.book_repository import (
+from api_manager_books.api.route import book_files as book_files_route
+from api_manager_books.api.route import books as books_route
+from api_manager_books.api.route.books import get_books
+from api_manager_books.schemas import books as book_shems
+from api_manager_books.schemas.books import BookListRead
+from api_manager_books.db.Repository.BookRepository.book_repository import (
     BOOK_BINARY_CHUNK_SIZE,
     BookNotFoundError,
 )
-from src.schemas.enums import UserRole
-from src.schemas.users import UserRead
-from src.application.services.book_file_service import BookFileNotFoundInServiceError
+from api_manager_books.schemas.enums import UserRole
+from api_manager_books.schemas.users import UserRead
+from api_manager_books.application.services.book_file_service import BookFileNotFoundInServiceError
 
 
 def test_books_route_imports_book_dtos_from_schemas_package() -> None:
@@ -33,14 +33,14 @@ def test_books_route_imports_book_dtos_from_schemas_package() -> None:
         alias.name
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom)
-        and node.module == "src.application.services.book_service"
+        and node.module == "api_manager_books.application.services.book_service"
         for alias in node.names
     }
     schema_imports = {
         alias.name
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom)
-        and node.module == "src.schemas.books"
+        and node.module == "api_manager_books.schemas.books"
         for alias in node.names
     }
 

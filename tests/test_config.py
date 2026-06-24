@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from src.core.config import SettingsManager
+from api_manager_books.config.config import SettingsManager
 
 @pytest.fixture
 def config_path(tmp_path) -> Path:

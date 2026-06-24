@@ -5,9 +5,9 @@ import uuid
 
 import pytest
 
-from src.schemas.books import BookCreate, BookMetadataUpdate
-from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.application.services.book_service import (
+from api_manager_books.schemas.books import BookCreate, BookMetadataUpdate
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
+from api_manager_books.application.services.book_service import (
     BookAlreadyExistsError,
     BookNotFoundInServiceError,
     BookService,

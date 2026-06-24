@@ -1,12 +1,12 @@
 import pytest
 import pytest_asyncio
 
-from src.schemas.book_chapters import BookChapterCreate
-from src.DB.Repository.BookChapterRepository.book_chapter_repository import (
+from api_manager_books.schemas.book_chapters import BookChapterCreate
+from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import (
     BookChapterRepository,
 )
-from src.schemas.books import BookCreate
-from src.DB.Repository.BookRepository.book_repository import BookRepository
+from api_manager_books.schemas.books import BookCreate
+from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
 
 pytestmark = pytest.mark.asyncio
 

@@ -1,12 +1,12 @@
 import pytest
 import pytest_asyncio
 
-from src.DB.Repository.BookRepository.ORM import Book
+from api_manager_books.db.Repository.BookRepository.ORM import Book
 
-from src.DB.Repository.BookRepository.book_repository import BookRepository
-from src.schemas.books import BookCreate
-from src.DB.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository, BookChapterNotFoundError
-from src.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
+from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
+from api_manager_books.schemas.books import BookCreate
+from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository, BookChapterNotFoundError
+from api_manager_books.schemas.book_chapters import BookChapterCreate, BookChapterUpdate
 
 
 pytestmark = pytest.mark.asyncio

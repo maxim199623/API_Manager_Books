@@ -4,12 +4,12 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.exc import IntegrityError
 
-from src.schemas.books import BookCreate
-from src.DB.Repository.BookRepository.book_repository import BookRepository
-from src.DB.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
-from src.schemas.enums import UserRole
-from src.schemas.users import UserCreate
-from src.DB.Repository.UserRepository.user_repository import UserRepository
+from api_manager_books.schemas.books import BookCreate
+from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
+from api_manager_books.db.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
+from api_manager_books.schemas.enums import UserRole
+from api_manager_books.schemas.users import UserCreate
+from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
 
 pytestmark = pytest.mark.asyncio
 

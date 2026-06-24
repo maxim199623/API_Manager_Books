@@ -3,7 +3,7 @@ name = "api_manager_books"
 version = "0.1.0"
 description = ""
 authors = ["Melkor <Melkor@DESKTOP-2F8FHNT>"]
-package-mode = false
+packages = [{ include = "api_manager_books", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.13"
@@ -22,6 +22,10 @@ websockets = "^16.0"
 python-multipart = "^0.0.29"
 
 
+[tool.poetry.scripts]
+api-manager-books = "api_manager_books.main:main"
+
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -30,4 +34,5 @@ build-backend = "poetry.core.masonry.api"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
+pythonpath = ["src"]
 

@@ -4,8 +4,8 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from src.schemas.logs import LogCreate
-from src.DB.Repository.LogRepository.log_repository import LogRepository
+from api_manager_books.schemas.logs import LogCreate
+from api_manager_books.db.Repository.LogRepository.log_repository import LogRepository
 
 
 # ----------------------------------------------------------------------

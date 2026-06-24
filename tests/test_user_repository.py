@@ -1,10 +1,10 @@
 import pytest
 import pytest_asyncio
 
-from src.schemas.enums import UserRole
-from src.DB.Repository.UserRepository.user_repository import UserRepository, EmailAlreadyExistsError, UserNotFoundError
-from src.schemas.users import UserCreate
-from src.security.passwords import verify_password
+from api_manager_books.schemas.enums import UserRole
+from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository, EmailAlreadyExistsError, UserNotFoundError
+from api_manager_books.schemas.users import UserCreate
+from api_manager_books.security.passwords import verify_password
 
 pytestmark = pytest.mark.asyncio
 

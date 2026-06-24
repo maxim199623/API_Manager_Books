@@ -5,9 +5,9 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.schemas.enums import UserRole
-from src.schemas.users import UserRead
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
+from api_manager_books.schemas.enums import UserRole
+from api_manager_books.schemas.users import UserRead
 
 
 class FakeReadingHistoryService:
@@ -53,7 +53,7 @@ def make_user() -> UserRead:
 @pytest.fixture
 def reading_history_route():
     try:
-        return importlib.import_module("src.api.route.reading_history")
+        return importlib.import_module("api_manager_books.api.route.reading_history")
     except ModuleNotFoundError as exc:
         pytest.fail(f"Модуль reading_history не найден: {exc}")
 
@@ -62,7 +62,7 @@ def get_route(path: str, method: str):
     return next(
         (
             route
-            for route in importlib.import_module("src.api.route.reading_history").router.routes
+            for route in importlib.import_module("api_manager_books.api.route.reading_history").router.routes
             if route.path == path and method in route.methods
         ),
         None,

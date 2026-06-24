@@ -5,8 +5,8 @@ import uuid
 
 import pytest
 
-from src.DB.Repository.BookRepository.book_repository import BookNotFoundError
-from src.application.services.book_file_service import (
+from api_manager_books.db.Repository.BookRepository.book_repository import BookNotFoundError
+from api_manager_books.application.services.book_file_service import (
     BookFileNotFoundInServiceError,
     BookFileService,
 )

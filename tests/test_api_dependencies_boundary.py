@@ -3,6 +3,8 @@ import importlib.util
 import ast
 from pathlib import Path
 
+PACKAGE_ROOT = "api_manager_books"
+LEGACY_IMPORT_ROOT = "s" + "rc"
 LEGACY_API_MODULE = ".".join(("src", "api", "Shems"))
 LEGACY_CORE_MODULE = ".".join(("src", "core", "Shems"))
 LEGACY_USER_ROLE_MODULE = ".".join(("src", "DB", "Repository", "UserRepository", "Enums"))
@@ -16,21 +18,80 @@ LEGACY_SHEMS_MODULES = (
 )
 
 
+def safe_find_spec(module_name: str):
+    try:
+        return importlib.util.find_spec(module_name)
+    except ModuleNotFoundError:
+        return None
+
+
+def test_runtime_and_tests_do_not_import_legacy_src_namespace() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    scan_paths = [project_root / "main.py"]
+    scan_paths.extend((project_root / "src").rglob("*.py"))
+    scan_paths.extend((project_root / "tests").rglob("*.py"))
+    offenders: list[str] = []
+
+    for path in scan_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                module_root = (node.module or "").split(".", maxsplit=1)[0]
+                if module_root == LEGACY_IMPORT_ROOT:
+                    offenders.append(f"{path.relative_to(project_root)}:{node.lineno}")
+
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    module_root = alias.name.split(".", maxsplit=1)[0]
+                    if module_root == LEGACY_IMPORT_ROOT:
+                        offenders.append(f"{path.relative_to(project_root)}:{node.lineno}")
+
+    assert offenders == []
+
+
+def test_runtime_and_tests_do_not_reference_legacy_source_paths() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    scan_paths = [project_root / "main.py"]
+    scan_paths.extend((project_root / "src").rglob("*.py"))
+    scan_paths.extend((project_root / "tests").rglob("*.py"))
+    legacy_roots = ("api", "DB", "core", "security", "application", "bootstrap", "schemas")
+    forbidden_fragments = [
+        separator.join((LEGACY_IMPORT_ROOT, root))
+        for root in legacy_roots
+        for separator in ("/", ".")
+    ]
+    offenders: list[str] = []
+
+    for path in scan_paths:
+        if not path.exists():
+            continue
+
+        text = path.read_text(encoding="utf-8")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for fragment in forbidden_fragments:
+                if fragment in line:
+                    offenders.append(
+                        f"{path.relative_to(project_root)}:{line_number} contains {fragment}"
+                    )
+
+    assert offenders == []
+
+
 def test_typo_dependencices_module_is_forbidden() -> None:
     importlib.invalidate_caches()
 
     forbidden_module = ".".join(("src", "api", "Dependencices"))
 
-    assert importlib.util.find_spec(forbidden_module) is None
+    assert safe_find_spec(forbidden_module) is None
 
 
 def test_pydantic_schemas_are_available_from_schemas_package() -> None:
     importlib.invalidate_caches()
 
-    books = importlib.import_module("src.schemas.books")
-    users = importlib.import_module("src.schemas.users")
-    config = importlib.import_module("src.schemas.config")
-    enums = importlib.import_module("src.schemas.enums")
+    books = importlib.import_module("api_manager_books.schemas.books")
+    users = importlib.import_module("api_manager_books.schemas.users")
+    config = importlib.import_module("api_manager_books.schemas.config")
+    enums = importlib.import_module("api_manager_books.schemas.enums")
 
     assert books.BookCreate
     assert users.UserRead
@@ -49,7 +110,7 @@ def test_legacy_shems_modules_are_removed() -> None:
     existing_modules = [
         module
         for module in LEGACY_SHEMS_MODULES
-        if importlib.util.find_spec(module) is not None
+        if safe_find_spec(module) is not None
     ]
 
     assert existing_files == []
@@ -63,7 +124,7 @@ def test_legacy_user_role_enums_module_is_removed() -> None:
     legacy_file = project_root / "src" / "DB" / "Repository" / "UserRepository" / "Enums.py"
 
     assert not legacy_file.exists()
-    assert importlib.util.find_spec(LEGACY_USER_ROLE_MODULE) is None
+    assert safe_find_spec(LEGACY_USER_ROLE_MODULE) is None
 
 
 def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
@@ -84,12 +145,12 @@ def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
                         module in LEGACY_SHEMS_MODULES
                         or module == LEGACY_USER_ROLE_MODULE
                         or (
-                            module.startswith("src.DB.Repository.")
+                            module.startswith("api_manager_books.db.Repository.")
                             and module.endswith(".Shems")
                         )
                     )
                     imports_legacy_name = (
-                        module.startswith("src.DB.Repository.")
+                        module.startswith("api_manager_books.db.Repository.")
                         and any(alias.name == "Shems" for alias in node.names)
                     )
                     if imports_legacy_module or imports_legacy_name:
@@ -102,7 +163,7 @@ def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
                             module in LEGACY_SHEMS_MODULES
                             or module == LEGACY_USER_ROLE_MODULE
                             or (
-                                module.startswith("src.DB.Repository.")
+                                module.startswith("api_manager_books.db.Repository.")
                                 and module.endswith(".Shems")
                             )
                         )
@@ -114,7 +175,7 @@ def test_runtime_modules_do_not_import_legacy_shems_modules() -> None:
 
 def test_favorite_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "favorite_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "favorite_service.py"
     forbidden_names = {"BookRepository", "FavoriteBookRepository", "LogRepository"}
     offenders: list[str] = []
 
@@ -124,7 +185,7 @@ def test_favorite_service_does_not_import_concrete_repository_classes() -> None:
             continue
 
         module = node.module or ""
-        if not module.startswith("src.DB.Repository."):
+        if not module.startswith("api_manager_books.db.Repository."):
             continue
 
         imported_names = {alias.name for alias in node.names}
@@ -136,7 +197,7 @@ def test_favorite_service_does_not_import_concrete_repository_classes() -> None:
 
 def test_book_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "book_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "book_service.py"
     forbidden_names = {"BookRepository", "FavoriteBookRepository", "LogRepository"}
     offenders: list[str] = []
 
@@ -146,7 +207,7 @@ def test_book_service_does_not_import_concrete_repository_classes() -> None:
             continue
 
         module = node.module or ""
-        if not module.startswith("src.DB.Repository."):
+        if not module.startswith("api_manager_books.db.Repository."):
             continue
 
         imported_names = {alias.name for alias in node.names}
@@ -158,7 +219,7 @@ def test_book_service_does_not_import_concrete_repository_classes() -> None:
 
 def test_book_file_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "book_file_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "book_file_service.py"
     forbidden_names = {"BookRepository", "LogRepository"}
     offenders: list[str] = []
 
@@ -168,7 +229,7 @@ def test_book_file_service_does_not_import_concrete_repository_classes() -> None
             continue
 
         module = node.module or ""
-        if not module.startswith("src.DB.Repository."):
+        if not module.startswith("api_manager_books.db.Repository."):
             continue
 
         imported_names = {alias.name for alias in node.names}
@@ -180,7 +241,7 @@ def test_book_file_service_does_not_import_concrete_repository_classes() -> None
 
 def test_chapter_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "chapter_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "chapter_service.py"
     forbidden_names = {"BookRepository", "BookChapterRepository", "LogRepository"}
     offenders: list[str] = []
 
@@ -190,7 +251,7 @@ def test_chapter_service_does_not_import_concrete_repository_classes() -> None:
             continue
 
         module = node.module or ""
-        if not module.startswith("src.DB.Repository."):
+        if not module.startswith("api_manager_books.db.Repository."):
             continue
 
         imported_names = {alias.name for alias in node.names}
@@ -202,7 +263,7 @@ def test_chapter_service_does_not_import_concrete_repository_classes() -> None:
 
 def test_reading_history_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "reading_history_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "reading_history_service.py"
     forbidden_names = {"BookRepository", "BookChapterRepository", "LogRepository"}
     offenders: list[str] = []
 
@@ -212,7 +273,7 @@ def test_reading_history_service_does_not_import_concrete_repository_classes() -
             continue
 
         module = node.module or ""
-        if not module.startswith("src.DB.Repository."):
+        if not module.startswith("api_manager_books.db.Repository."):
             continue
 
         imported_names = {alias.name for alias in node.names}
@@ -224,7 +285,7 @@ def test_reading_history_service_does_not_import_concrete_repository_classes() -
 
 def test_user_service_does_not_import_concrete_repository_classes() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "user_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "user_service.py"
     forbidden_names = {"UserRepository", "LogRepository"}
     offenders: list[str] = []
 
@@ -234,7 +295,7 @@ def test_user_service_does_not_import_concrete_repository_classes() -> None:
             continue
 
         module = node.module or ""
-        if not module.startswith("src.DB.Repository."):
+        if not module.startswith("api_manager_books.db.Repository."):
             continue
 
         imported_names = {alias.name for alias in node.names}
@@ -246,16 +307,16 @@ def test_user_service_does_not_import_concrete_repository_classes() -> None:
 
 def test_settings_service_does_not_import_concrete_settings_infrastructure() -> None:
     project_root = Path(__file__).resolve().parents[1]
-    path = project_root / "src" / "application" / "services" / "settings_service.py"
+    path = project_root / "src" / PACKAGE_ROOT / "application" / "services" / "settings_service.py"
     forbidden_modules = {
-        "src.DB.Manager.manager",
-        "src.DB.base",
-        "src.core.config",
+        "api_manager_books.db.Manager.manager",
+        "api_manager_books.db.base",
+        "api_manager_books.config.config",
     }
     forbidden_from_imports = {
-        "src.core.config": {"SettingsManager"},
+        "api_manager_books.config.config": {"SettingsManager"},
     }
-    forbidden_from_modules = {"src.DB.Manager.manager", "src.DB.base"}
+    forbidden_from_modules = {"api_manager_books.db.Manager.manager", "api_manager_books.db.base"}
     offenders: list[str] = []
 
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

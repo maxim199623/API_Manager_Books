@@ -1,8 +1,8 @@
 import pytest
 import pytest_asyncio
 
-from src.DB.Repository.BookRepository.book_repository import BookRepository, BookNotFoundError
-from src.schemas.books import BookCreate, BookUpdate
+from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository, BookNotFoundError
+from api_manager_books.schemas.books import BookCreate, BookUpdate
 
 pytestmark = pytest.mark.asyncio
 
@@ -215,10 +215,10 @@ class TestBookRepository:
         book_repo: BookRepository,
         repository_session,
     ):
-        from src.DB.Repository.BookChapterRepository.ORM import BookChapter
-        from src.DB.Repository.LogRepository.ORM import LogEntry
-        from src.schemas.enums import UserRole
-        from src.DB.Repository.UserRepository.ORM import User
+        from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
+        from api_manager_books.db.Repository.LogRepository.ORM import LogEntry
+        from api_manager_books.schemas.enums import UserRole
+        from api_manager_books.db.Repository.UserRepository.ORM import User
 
         user = User(
             email="progress-reader@example.com",

@@ -12,10 +12,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.core.config import SettingsManager
-from src.DB.Manager.manager import AsyncDBManager
-from src.DB.base import Base
-from src.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
+from api_manager_books.config.config import SettingsManager
+from api_manager_books.db.Manager.manager import AsyncDBManager
+from api_manager_books.db.base import Base
+from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
 REPOSITORY_BACKENDS = ("sqlite", "postgres")
 
