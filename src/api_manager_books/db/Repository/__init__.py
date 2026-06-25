@@ -1,4 +1,8 @@
 from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter  # noqa: F401
+from api_manager_books.db.Repository.BookChapterFileRepository.ORM import (  # noqa: F401
+    BookChapterFile,
+    BookChapterFileChunk,
+)
 from api_manager_books.db.Repository.BookRepository.ORM import Book  # noqa: F401
 from api_manager_books.db.Repository.FavoriteBookRepository.ORM import FavoriteBook  # noqa: F401
 from api_manager_books.db.Repository.LogRepository.ORM import LogEntry  # noqa: F401

@@ -13,6 +13,11 @@ from api_manager_books.schemas.books import BookCreate
 pytestmark = pytest.mark.asyncio
 
 
+async def test_chapter_file_relationship_is_registered_without_direct_file_model_import():
+    """Проверяет регистрацию связи файлов главы без прямого импорта модели файла."""
+    assert "files" in Book.__mapper__.relationships["chapters"].mapper.relationships
+
+
 @pytest_asyncio.fixture
 async def book_repo(repository_session) -> BookRepository:
     """Готовит репозиторий книг."""
