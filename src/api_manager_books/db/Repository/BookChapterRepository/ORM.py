@@ -18,6 +18,7 @@ from api_manager_books.db.base import Base
 
 if TYPE_CHECKING:
     # только для проверки типов, чтобы не ловить циклический импорт
+    from api_manager_books.db.Repository.BookChapterFileRepository.ORM import BookChapterFile
     from api_manager_books.db.Repository.BookRepository.ORM import Book
 
 
@@ -77,6 +78,13 @@ class BookChapter(Base):
     book: Mapped["Book"] = relationship(
         "Book",
         back_populates="chapters",
+    )
+
+    files: Mapped[list["BookChapterFile"]] = relationship(
+        "BookChapterFile",
+        back_populates="chapter",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # у одной книги не может быть двух глав с одинаковым номером
