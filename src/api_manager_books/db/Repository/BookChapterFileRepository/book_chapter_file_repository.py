@@ -171,13 +171,13 @@ class BookChapterFileRepository:
 
         actual_chunks_count = len(rows)
         actual_size = sum(len(row.data) for row in rows)
-        max_index = max((row.chunk_index for row in rows), default=None)
-        expected_max_index = chapter_file.chunks_count - 1 if chapter_file.chunks_count else None
+        actual_indexes = [row.chunk_index for row in rows]
+        expected_indexes = list(range(chapter_file.chunks_count))
 
         return (
             chapter_file.chunks_count == actual_chunks_count
             and chapter_file.size == actual_size
-            and max_index == expected_max_index
+            and actual_indexes == expected_indexes
         )
 
     async def _get_file(self, file_id: uuid.UUID) -> BookChapterFile | None:

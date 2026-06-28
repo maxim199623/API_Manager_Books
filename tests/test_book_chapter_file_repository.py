@@ -167,3 +167,30 @@ async def test_create_file_stores_chunks_in_order_and_meta(
     assert created.chunks_count == 3
     assert chunks == [b"abc", b"defg", b"h"]
     assert is_valid is True
+
+
+async def test_validate_integrity_rejects_chunk_indexes_that_do_not_start_from_zero(
+    repository_memory_session,
+    chapter_file_repo: BookChapterFileRepository,
+):
+    """Проверяет, что поврежденная нумерация чанков не считается валидной."""
+    chapter = await _create_chapter(repository_memory_session)
+    created = await chapter_file_repo.create_file(
+        chapter.id,
+        file_name="broken.bin",
+        content_type="application/octet-stream",
+        chunks=None,
+    )
+
+    repository_memory_session.add_all(
+        [
+            BookChapterFileChunk(file_id=created.id, chunk_index=-1, data=b"ab"),
+            BookChapterFileChunk(file_id=created.id, chunk_index=1, data=b"cd"),
+        ]
+    )
+    file_model = await repository_memory_session.get(BookChapterFile, created.id)
+    file_model.size = 4
+    file_model.chunks_count = 2
+    await repository_memory_session.flush()
+
+    assert await chapter_file_repo.validate_integrity(created.id) is False
