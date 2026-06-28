@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from api_manager_books.api.route.book_chapter_files import router as book_chapter_files_router
 from api_manager_books.api.route.book_chapters import router as book_chapters_router
 from api_manager_books.api.route.book_favorites import router as book_favorites_router
 from api_manager_books.api.route.book_files import router as book_files_router
@@ -14,6 +15,7 @@ main_router.include_router(websocket_router)
 main_router.include_router(user_router)
 main_router.include_router(books_router)
 main_router.include_router(book_chapters_router)
+main_router.include_router(book_chapter_files_router)
 main_router.include_router(book_files_router)
 main_router.include_router(book_favorites_router)
 main_router.include_router(reading_history_router)

@@ -5,6 +5,7 @@ from api_manager_books.api.security.jwt_tokens import create_access_token
 from api_manager_books.api.websocket import manager as ws_manager
 from api_manager_books.application.services.book_file_service import BookFileService
 from api_manager_books.application.services.book_service import BookService
+from api_manager_books.application.services.chapter_file_service import ChapterFileService
 from api_manager_books.application.services.chapter_service import ChapterService
 from api_manager_books.application.services.favorite_service import FavoriteService
 from api_manager_books.application.services.reading_history_service import ReadingHistoryService
@@ -13,6 +14,9 @@ from api_manager_books.application.services.user_service import UserService
 from api_manager_books.config.config import SettingsManager
 from api_manager_books.db.base import Base
 from api_manager_books.db.Manager.manager import AsyncDBManager
+from api_manager_books.db.Repository.BookChapterFileRepository.book_chapter_file_repository import (
+    BookChapterFileRepository,
+)
 from api_manager_books.db.Repository.BookChapterRepository.book_chapter_repository import BookChapterRepository
 from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
 from api_manager_books.db.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
@@ -111,6 +115,11 @@ async def get_book_chapter_repo(session=Depends(get_session)) -> BookChapterRepo
     return BookChapterRepository(session)
 
 
+async def get_book_chapter_file_repo(session=Depends(get_session)) -> BookChapterFileRepository:
+    """Получаем BookChapterFileRepository"""
+    return BookChapterFileRepository(session)
+
+
 async def get_chapter_service(
     book_repo: BookRepository = Depends(get_book_repo),
     chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
@@ -121,6 +130,22 @@ async def get_chapter_service(
         book_repo=book_repo,
         chapter_repo=chapter_repo,
         log_repo=log_repo,
+    )
+
+
+async def get_chapter_file_service(
+    db_manager: AsyncDBManager = Depends(get_db_manager),
+    chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
+    file_repo: BookChapterFileRepository = Depends(get_book_chapter_file_repo),
+    log_repo: LogRepository = Depends(get_log_repo),
+) -> ChapterFileService:
+    """Получаем ChapterFileService"""
+    return ChapterFileService(
+        chapter_repo=chapter_repo,
+        file_repo=file_repo,
+        log_repo=log_repo,
+        session_manager=db_manager,
+        file_repo_factory=BookChapterFileRepository,
     )
 
 
