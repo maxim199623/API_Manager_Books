@@ -1,11 +1,23 @@
+import os
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-KEY_DIR = Path(__file__).resolve().parent
-PRIVATE_KEY_PATH = KEY_DIR / "jwt_private.pem"
-PUBLIC_KEY_PATH = KEY_DIR / "jwt_public.pem"
+
+def _jwt_key_dir() -> Path:
+    """Вернуть runtime-директорию JWT-ключей."""
+    return Path(os.environ.get("JWT_KEY_DIR", "var/security/jwt"))
+
+
+def _private_key_path() -> Path:
+    """Вернуть путь приватного JWT-ключа."""
+    return _jwt_key_dir() / "jwt_private.pem"
+
+
+def _public_key_path() -> Path:
+    """Вернуть путь публичного JWT-ключа."""
+    return _jwt_key_dir() / "jwt_public.pem"
 
 def _generate_rsa_key_pair() -> tuple[bytes, bytes]:
     """
@@ -37,15 +49,23 @@ def ensure_jwt_keys() -> tuple[bytes, bytes]:
     Если нет — создаёт директорию keys/ и генерирует новую пару ключей.
     Возвращает (private_pem, public_pem) как bytes.
     """
-    KEY_DIR.mkdir(parents=True, exist_ok=True)
+    key_dir = _jwt_key_dir()
+    private_key_path = _private_key_path()
+    public_key_path = _public_key_path()
 
-    if not PRIVATE_KEY_PATH.exists() or not PUBLIC_KEY_PATH.exists():
+    key_dir.mkdir(parents=True, exist_ok=True)
+
+    if not private_key_path.exists() or not public_key_path.exists():
         private_pem, public_pem = _generate_rsa_key_pair()
 
-        PRIVATE_KEY_PATH.write_bytes(private_pem)
-        PUBLIC_KEY_PATH.write_bytes(public_pem)
+        private_key_path.write_bytes(private_pem)
+        try:
+            private_key_path.chmod(0o600)
+        except OSError:
+            pass
+        public_key_path.write_bytes(public_pem)
     else:
-        private_pem = PRIVATE_KEY_PATH.read_bytes()
-        public_pem = PUBLIC_KEY_PATH.read_bytes()
+        private_pem = private_key_path.read_bytes()
+        public_pem = public_key_path.read_bytes()
 
     return private_pem, public_pem

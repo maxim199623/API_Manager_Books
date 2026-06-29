@@ -1,8 +1,9 @@
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
 from pydantic import EmailStr
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,6 +65,12 @@ class UserRepository:
         stmt = select(User).order_by(User.id).offset(offset).limit(limit)
         res = await self._session.execute(stmt)
         return res.scalars().all()
+
+    async def count_admins(self) -> int:
+        """Посчитать пользователей с ролью администратора."""
+        stmt = select(func.count()).select_from(User).where(User.role == UserRole.ADMIN)
+        result = await self._session.execute(stmt)
+        return int(result.scalar_one())
 
     async def delete_user(self, user_id: uuid.UUID) -> bool:
         """Удаление пользователя"""
@@ -129,3 +136,33 @@ class UserRepository:
         user.session = session_id
         await self._session.flush()
         await self._session.refresh(user)
+
+    async def set_auth_session(
+        self,
+        user_id: uuid.UUID,
+        session_id: uuid.UUID,
+        refresh_token_hash: bytes,
+        refresh_token_expires_at: datetime,
+    ) -> None:
+        """Сохранить текущую auth-сессию пользователя."""
+        user = await self.ensure_exists(user_id)
+        user.session = session_id
+        user.refresh_token_hash = refresh_token_hash
+        user.refresh_token_expires_at = refresh_token_expires_at
+        await self._session.flush()
+        await self._session.refresh(user)
+
+    async def clear_auth_session(self, user_id: uuid.UUID) -> None:
+        """Очистить текущую auth-сессию пользователя."""
+        user = await self.ensure_exists(user_id)
+        user.session = None
+        user.refresh_token_hash = None
+        user.refresh_token_expires_at = None
+        await self._session.flush()
+        await self._session.refresh(user)
+
+    async def get_by_refresh_token_hash(self, refresh_token_hash: bytes) -> User | None:
+        """Получить пользователя по хешу refresh token."""
+        stmt = select(User).where(User.refresh_token_hash == refresh_token_hash)
+        res = await self._session.execute(stmt)
+        return res.scalar_one_or_none()

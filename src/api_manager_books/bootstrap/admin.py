@@ -7,6 +7,7 @@ from api_manager_books.db.Repository.UserRepository.ORM import User
 from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
 from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserCreate
+from api_manager_books.security.password_policy import WeakPasswordError, validate_password_strength
 
 
 class InitialAdminRequiredError(RuntimeError):
@@ -22,9 +23,10 @@ def _initial_admin_credentials() -> tuple[str, str]:
             "INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD are required for first startup"
         )
 
-    # Не допускаем известный пароль и слишком короткие секреты при первом запуске.
-    if password == "default" or len(password) < 12:
-        raise InitialAdminRequiredError("INITIAL_ADMIN_PASSWORD is too weak")
+    try:
+        validate_password_strength(password)
+    except WeakPasswordError as exc:
+        raise InitialAdminRequiredError("INITIAL_ADMIN_PASSWORD is too weak") from exc
 
     return email, password
 

@@ -57,6 +57,15 @@ async def test_initial_admin_rejects_weak_default_password(db_manager, monkeypat
         await create_initial_admin(db_manager)
 
 
+async def test_initial_admin_rejects_short_password(db_manager, monkeypatch):
+    """Проверяет отказ для короткого начального пароля."""
+    monkeypatch.setenv("INITIAL_ADMIN_EMAIL", "admin@example.com")
+    monkeypatch.setenv("INITIAL_ADMIN_PASSWORD", "short")
+
+    with pytest.raises(InitialAdminRequiredError):
+        await create_initial_admin(db_manager)
+
+
 async def test_valid_initial_admin_env_creates_exactly_one_admin(db_manager, monkeypatch):
     monkeypatch.setenv("INITIAL_ADMIN_EMAIL", "admin@example.com")
     monkeypatch.setenv("INITIAL_ADMIN_PASSWORD", "change-this-long-password")
