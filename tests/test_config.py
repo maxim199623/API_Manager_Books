@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from api_manager_books.config.config import SettingsManager
+from api_manager_books.config.config import SettingsManager, normalize_sqlite_path
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ class Test_load_settings:
         settings = make_manager().settings
         assert  settings.database.backend == "sqlite"
         assert  settings.database.echo is False
-        assert  settings.database.sqlite.path == "app.db"
+        assert  settings.database.sqlite.path == "var/app.db"
         # -----------
         assert  settings.database.postgres.host == "localhost"
         assert  settings.database.postgres.port == 5432
@@ -39,7 +39,7 @@ class Test_load_settings:
         assert  settings.database.postgres.password == "postgres"
         assert  settings.database.postgres.name == "myapp"
         # --------
-        assert  settings.database.get_url == "sqlite+aiosqlite:///app.db"
+        assert  settings.database.get_url == "sqlite+aiosqlite:///var/app.db"
 
         # ---------- файл действительно создан ----------
         assert config_path.exists()
@@ -187,3 +187,41 @@ class Test_load_settings:
         m2 = make_manager()
         assert m2.db.backend == "postgres"
         assert m2.db.get_url == "postgresql+asyncpg://user:pwd@db:5432/libdb"
+
+
+def test_normalize_sqlite_path_accepts_path_inside_var(tmp_path):
+    """Проверяет допустимый путь внутри runtime-каталога."""
+    assert normalize_sqlite_path("var/app.db", base_dir=tmp_path) == "var/app.db"
+
+
+def test_normalize_sqlite_path_normalizes_inside_var(tmp_path):
+    """Проверяет стабильный относительный путь после нормализации."""
+    assert normalize_sqlite_path("var/../var/books.db", base_dir=tmp_path) == "var/books.db"
+
+
+def test_normalize_sqlite_path_rejects_parent_escape(tmp_path):
+    """Проверяет запрет выхода из runtime-каталога."""
+    with pytest.raises(ValueError, match="inside var"):
+        normalize_sqlite_path("../outside.db", base_dir=tmp_path)
+
+
+def test_normalize_sqlite_path_rejects_absolute_outside_var(tmp_path):
+    """Проверяет запрет абсолютного пути вне runtime-каталога."""
+    outside = tmp_path.parent / "outside.db"
+
+    with pytest.raises(ValueError, match="inside var"):
+        normalize_sqlite_path(str(outside), base_dir=tmp_path)
+
+
+def test_normalize_sqlite_path_rejects_empty_string(tmp_path):
+    """Проверяет запрет пустого пути."""
+    with pytest.raises(ValueError, match="must not be empty"):
+        normalize_sqlite_path("  ", base_dir=tmp_path)
+
+
+def test_normalize_sqlite_path_allows_memory_only_when_requested(tmp_path):
+    """Проверяет, что :memory: доступен только для тестовых сценариев."""
+    with pytest.raises(ValueError, match="not allowed"):
+        normalize_sqlite_path(":memory:", base_dir=tmp_path)
+
+    assert normalize_sqlite_path(":memory:", base_dir=tmp_path, allow_memory=True) == ":memory:"

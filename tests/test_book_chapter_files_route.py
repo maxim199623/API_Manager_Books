@@ -18,6 +18,8 @@ from api_manager_books.db.Repository.BookChapterFileRepository.book_chapter_file
 from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserRead
 
+MP3_BYTES = b"ID3\x04\x00\x00payload"
+
 
 @dataclass(frozen=True)
 class FakeChapterFileMeta:
@@ -264,7 +266,7 @@ async def test_download_chapter_file_streams_bytes_and_sets_content_disposition(
     assert body == b"abcd"
     assert service.meta_calls == [(book_id, 1, file_id)]
     assert service.chunk_calls == [file_id]
-    assert response.headers["Content-Disposition"].startswith('attachment; filename=" 1.txt"')
+    assert response.headers["Content-Disposition"].startswith('attachment; filename="1.txt"')
     assert "filename*=UTF-8''" in response.headers["Content-Disposition"]
 
 
@@ -292,9 +294,9 @@ async def test_upload_chapter_file_passes_filename_content_type_and_chunks():
     created = FakeChapterFileMeta(
         id=uuid.uuid4(),
         chapter_id=chapter_id,
-        file_name="archive.bin",
-        extension="bin",
-        content_type="application/octet-stream",
+        file_name="archive.txt",
+        extension="txt",
+        content_type="text/plain",
         size=CHAPTER_FILE_CHUNK_SIZE + 4,
         chunks_count=2,
     )
@@ -305,7 +307,7 @@ async def test_upload_chapter_file_passes_filename_content_type_and_chunks():
     result = await route.upload_chapter_file(
         book_id=book_id,
         chapter_num=9,
-        file=make_upload("archive.bin", payload, "application/octet-stream"),
+        file=make_upload("archive.txt", payload, "text/plain"),
         chapter_file_service=service,
         current_user=user,
     )
@@ -316,11 +318,74 @@ async def test_upload_chapter_file_passes_filename_content_type_and_chunks():
             "user_id": user.id,
             "book_id": book_id,
             "chapter_num": 9,
-            "file_name": "archive.bin",
-            "content_type": "application/octet-stream",
+            "file_name": "archive.txt",
+            "content_type": "text/plain",
             "chunks": [b"a" * CHAPTER_FILE_CHUNK_SIZE, b"tail"],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_upload_chapter_file_accepts_mp3_and_passes_chunks():
+    service = FakeChapterFileService(
+        create_meta=FakeChapterFileMeta(
+            id=uuid.uuid4(),
+            chapter_id=uuid.uuid4(),
+            file_name="chapter.mp3",
+            extension="mp3",
+            content_type="audio/mpeg",
+            size=len(MP3_BYTES),
+            chunks_count=1,
+        )
+    )
+    user = make_user(UserRole.ADMIN)
+
+    result = await route.upload_chapter_file(
+        book_id=uuid.uuid4(),
+        chapter_num=1,
+        file=make_upload("chapter.mp3", MP3_BYTES, "audio/mpeg"),
+        chapter_file_service=service,
+        current_user=user,
+    )
+
+    assert result.model_dump()["id"] == service.create_meta.id
+    assert service.create_calls[0]["file_name"] == "chapter.mp3"
+    assert service.create_calls[0]["content_type"] == "audio/mpeg"
+    assert service.create_calls[0]["chunks"] == [MP3_BYTES]
+
+
+@pytest.mark.asyncio
+async def test_upload_chapter_file_rejects_disallowed_extension_before_storage():
+    service = FakeChapterFileService()
+
+    with pytest.raises(HTTPException) as excinfo:
+        await route.upload_chapter_file(
+            book_id=uuid.uuid4(),
+            chapter_num=1,
+            file=make_upload("payload.exe", b"bad", "application/octet-stream"),
+            chapter_file_service=service,
+            current_user=make_user(UserRole.ADMIN),
+        )
+
+    assert excinfo.value.status_code == 415
+    assert service.create_calls == []
+
+
+@pytest.mark.asyncio
+async def test_upload_chapter_file_rejects_wav_before_storage():
+    service = FakeChapterFileService()
+
+    with pytest.raises(HTTPException) as excinfo:
+        await route.upload_chapter_file(
+            book_id=uuid.uuid4(),
+            chapter_num=1,
+            file=make_upload("sound.wav", b"RIFF....WAVE", "audio/wav"),
+            chapter_file_service=service,
+            current_user=make_user(UserRole.ADMIN),
+        )
+
+    assert excinfo.value.status_code == 415
+    assert service.create_calls == []
 
 
 @pytest.mark.asyncio

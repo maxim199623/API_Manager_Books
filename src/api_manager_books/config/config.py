@@ -5,6 +5,35 @@ from pydantic import BaseModel
 
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def normalize_sqlite_path(
+    path: str,
+    *,
+    base_dir: Path = PROJECT_ROOT,
+    allow_memory: bool = False,
+) -> str:
+    """Нормализует SQLite путь и запрещает выход из runtime-каталога."""
+    raw_path = path.strip()
+    if not raw_path:
+        raise ValueError("sqlite path must not be empty")
+
+    if raw_path == ":memory:":
+        if allow_memory:
+            return raw_path
+        raise ValueError(":memory: sqlite path is not allowed here")
+
+    base = base_dir.resolve()
+    var_dir = (base / "var").resolve()
+    candidate = Path(raw_path)
+    resolved = candidate.resolve() if candidate.is_absolute() else (base / candidate).resolve()
+
+    if not resolved.is_relative_to(var_dir):
+        raise ValueError("sqlite path must stay inside var directory")
+
+    return resolved.relative_to(base).as_posix()
+
 
 class AppSettings(BaseModel):
     """Описывает настройки приложения."""
@@ -46,9 +75,7 @@ class SettingsManager:
         sqlite_settings = None
         if "sqlite" in self._parser:
             sqlite_section = self._parser["sqlite"]
-            sqlite_settings = SQLiteSettings(
-                path=sqlite_section.get("path", "./app.db")
-            )
+            sqlite_settings = SQLiteSettings(path=sqlite_section.get("path", "var/app.db"))
 
         postgres_settings = None
         if "postgres" in self._parser:
@@ -185,9 +212,9 @@ class SettingsManager:
     def _create_default_settings(self) -> AppSettings:
         """
         Стандартные настройки, если файла нет.
-        По умолчанию: sqlite ./app.db, echo = true, postgres с дефолтами.
+        По умолчанию: sqlite var/app.db, echo = false, postgres с дефолтами.
         """
-        sqlite_defaults = SQLiteSettings(path="app.db")
+        sqlite_defaults = SQLiteSettings(path="var/app.db")
         postgres_defaults = PostgresSettings(
             host="localhost",
             port=5432,

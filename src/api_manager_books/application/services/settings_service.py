@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from api_manager_books.config.config import AppSettings
+from api_manager_books.config.config import AppSettings, normalize_sqlite_path
 from api_manager_books.schemas.api import SettingsResponse, SettingsUpdate
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
@@ -118,10 +118,11 @@ class SettingsService:
         if payload.echo is not None:
             db.echo = payload.echo
         if payload.sqlite_path is not None:
+            sqlite_path = normalize_sqlite_path(payload.sqlite_path)
             if db.sqlite is None:
-                db.sqlite = SQLiteSettings(path=payload.sqlite_path)
+                db.sqlite = SQLiteSettings(path=sqlite_path)
             else:
-                db.sqlite.path = payload.sqlite_path
+                db.sqlite.path = sqlite_path
 
         if (
             payload.postgres_host is not None

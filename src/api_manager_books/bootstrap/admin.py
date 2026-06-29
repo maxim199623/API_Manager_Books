@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy import select
 
 from api_manager_books.db.Manager.manager import AsyncDBManager
@@ -7,8 +9,28 @@ from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserCreate
 
 
-async def create_default_admin(db_manager: AsyncDBManager) -> None:
-    """Создает администратора по умолчанию, если пользователей еще нет."""
+class InitialAdminRequiredError(RuntimeError):
+    """Начальный администратор не настроен безопасно."""
+
+
+def _initial_admin_credentials() -> tuple[str, str]:
+    email = os.environ.get("INITIAL_ADMIN_EMAIL", "").strip()
+    password = os.environ.get("INITIAL_ADMIN_PASSWORD", "")
+
+    if not email or not password:
+        raise InitialAdminRequiredError(
+            "INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD are required for first startup"
+        )
+
+    # Не допускаем известный пароль и слишком короткие секреты при первом запуске.
+    if password == "default" or len(password) < 12:
+        raise InitialAdminRequiredError("INITIAL_ADMIN_PASSWORD is too weak")
+
+    return email, password
+
+
+async def create_initial_admin(db_manager: AsyncDBManager) -> None:
+    """Создает первого администратора только из явно заданных переменных окружения."""
     async with db_manager.session() as session:
         repo = UserRepository(session)
         result = await session.execute(select(User.id).limit(1))
@@ -17,10 +39,12 @@ async def create_default_admin(db_manager: AsyncDBManager) -> None:
         if exists is not None:
             return
 
+        email, password = _initial_admin_credentials()
+
         await repo.create_user(
             UserCreate(
-                email="default@default.ru",
-                password="default",
+                email=email,
+                password=password,
                 role=UserRole.ADMIN,
             )
         )

@@ -1,28 +1,19 @@
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from api_manager_books.api.dependencies import get_book_file_service
+from api_manager_books.api.download_headers import content_disposition_attachment
 from api_manager_books.api.security.utils import require_admin, require_auth
+from api_manager_books.api.upload_policy import iter_upload_chunks_with_policy
 from api_manager_books.application.services.book_file_service import (
-    BOOK_BINARY_CHUNK_SIZE,
     BookFileNotFoundInServiceError,
     BookFileService,
 )
 from api_manager_books.schemas.users import UserRead
 
 router = APIRouter(prefix="/books", tags=["book-files"])
-
-
-async def _iter_upload_chunks(upload: UploadFile):
-    """Итерирует загруженный файл чанками."""
-    while True:
-        chunk = await upload.read(BOOK_BINARY_CHUNK_SIZE)
-        if not chunk:
-            break
-        yield chunk
 
 
 @router.get("/{book_id}/cover")
@@ -61,18 +52,14 @@ async def get_book_file(
             detail="File not found",
         )
 
-    filename = meta.file_name or f"{book_id}.bin"
-    ascii_name = filename.encode("ascii", "ignore").decode() or f"{book_id}.bin"
-
-    content_disposition = f'attachment; filename="{ascii_name}"'
-    if filename != ascii_name:
-        content_disposition += f"; filename*=UTF-8''{quote(filename, safe='')}"
-
     return StreamingResponse(
         book_file_service.iter_file_chunks(book_id),
         media_type=meta.content_type or "application/octet-stream",
         headers={
-            "Content-Disposition": content_disposition
+            "Content-Disposition": content_disposition_attachment(
+                meta.file_name,
+                fallback=f"{book_id}.bin",
+            )
         },
     )
 
@@ -90,7 +77,7 @@ async def update_book_cover(
             current_user.id,
             book_id,
             cover.content_type,
-            _iter_upload_chunks(cover),
+            iter_upload_chunks_with_policy(cover, "cover"),
         )
     except BookFileNotFoundInServiceError as err:
         raise HTTPException(
@@ -113,7 +100,7 @@ async def update_book_file(
             book_id,
             file.filename,
             file.content_type,
-            _iter_upload_chunks(file),
+            iter_upload_chunks_with_policy(file, "book_file"),
         )
     except BookFileNotFoundInServiceError as err:
         raise HTTPException(

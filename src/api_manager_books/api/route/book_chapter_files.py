@@ -1,17 +1,15 @@
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from api_manager_books.api.dependencies import get_chapter_file_service
+from api_manager_books.api.download_headers import content_disposition_attachment
 from api_manager_books.api.security.utils import require_admin, require_auth
+from api_manager_books.api.upload_policy import iter_upload_chunks_with_policy
 from api_manager_books.application.services.chapter_file_service import (
     ChapterFileNotFoundInServiceError,
     ChapterFileService,
-)
-from api_manager_books.db.Repository.BookChapterFileRepository.book_chapter_file_repository import (
-    CHAPTER_FILE_CHUNK_SIZE,
 )
 from api_manager_books.schemas.book_chapter_files import (
     BookChapterFileCreateResponse,
@@ -20,24 +18,6 @@ from api_manager_books.schemas.book_chapter_files import (
 from api_manager_books.schemas.users import UserRead
 
 router = APIRouter(prefix="/books", tags=["book-chapter-files"])
-
-
-async def _iter_upload_chunks(upload: UploadFile):
-    """Итерирует загруженный файл чанками."""
-    while True:
-        chunk = await upload.read(CHAPTER_FILE_CHUNK_SIZE)
-        if not chunk:
-            break
-        yield chunk
-
-
-def _content_disposition(filename: str) -> str:
-    """Формирует заголовок скачивания с поддержкой Unicode."""
-    ascii_name = filename.encode("ascii", "ignore").decode() or "chapter-file.bin"
-    content_disposition = f'attachment; filename="{ascii_name}"'
-    if filename != ascii_name:
-        content_disposition += f"; filename*=UTF-8''{quote(filename, safe='')}"
-    return content_disposition
 
 
 @router.get(
@@ -97,7 +77,7 @@ async def upload_chapter_file(
             chapter_num,
             file.filename,
             file.content_type,
-            _iter_upload_chunks(file),
+            iter_upload_chunks_with_policy(file, "chapter_file"),
         )
     except ChapterFileNotFoundInServiceError as err:
         raise HTTPException(
@@ -128,7 +108,12 @@ async def download_chapter_file(
     return StreamingResponse(
         chapter_file_service.iter_file_chunks(file_id),
         media_type=meta.content_type or "application/octet-stream",
-        headers={"Content-Disposition": _content_disposition(meta.file_name)},
+        headers={
+            "Content-Disposition": content_disposition_attachment(
+                meta.file_name,
+                fallback="chapter-file.bin",
+            )
+        },
     )
 
 

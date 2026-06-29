@@ -23,6 +23,9 @@ from api_manager_books.schemas.books import BookListRead
 from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserRead
 
+EPUB_BYTES = b"PK\x03\x04epub-payload"
+WEBP_BYTES = b"RIFF\x0c\x00\x00\x00WEBPpayload"
+
 
 def test_books_route_imports_book_dtos_from_schemas_package() -> None:
     """Проверяет импорт DTO из пакета схем."""
@@ -535,6 +538,33 @@ async def test_get_book_file_streams_chunked_bytes_and_sets_filename():
 
 
 @pytest.mark.asyncio
+async def test_get_book_file_sanitizes_unsafe_content_disposition_filename():
+    """Проверяет безопасный заголовок скачивания файла книги."""
+    book_file_service = FakeBookFileService(
+        file_meta=FakeBinaryMeta(
+            content_type="application/octet-stream",
+            file_name='bad\r\n"name\\.epub',
+            size=4,
+        ),
+        file_chunks=[b"data"],
+    )
+
+    response = await book_files_route.get_book_file(
+        book_id=uuid.uuid4(),
+        book_file_service=book_file_service,
+        current_user=make_user(),
+    )
+
+    header = response.headers["Content-Disposition"]
+    quoted = header.split('filename="', 1)[1].split('"', 1)[0]
+
+    assert "\r" not in header
+    assert "\n" not in header
+    assert '"' not in quoted
+    assert "\\" not in quoted
+
+
+@pytest.mark.asyncio
 async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
     """Проверяет замену обложки через multipart."""
     book_id = uuid.uuid4()
@@ -543,7 +573,7 @@ async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
 
     result = await book_files_route.update_book_cover(
         book_id=book_id,
-        cover=make_upload("cover.webp", b"cover-bytes", "image/webp"),
+        cover=make_upload("cover.webp", WEBP_BYTES, "image/webp"),
         book_file_service=book_file_service,
         current_user=current_user,
     )
@@ -554,9 +584,26 @@ async def test_update_book_cover_endpoint_replaces_cover_via_multipart():
             "user_id": current_user.id,
             "book_id": book_id,
             "content_type": "image/webp",
-            "cover_chunks": [b"cover-bytes"],
+            "cover_chunks": [WEBP_BYTES],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_update_book_cover_rejects_invalid_signature_before_storage():
+    """Проверяет отказ для поддельной обложки до записи."""
+    book_file_service = FakeBookFileService()
+
+    with pytest.raises(HTTPException) as excinfo:
+        await book_files_route.update_book_cover(
+            book_id=uuid.uuid4(),
+            cover=make_upload("cover.png", b"MZ\x90\x00payload", "image/png"),
+            book_file_service=book_file_service,
+            current_user=make_admin(),
+        )
+
+    assert excinfo.value.status_code == 415
+    assert book_file_service.cover_updates == []
 
 
 @pytest.mark.asyncio
@@ -565,7 +612,7 @@ async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
     book_id = uuid.uuid4()
     book_file_service = FakeBookFileService()
     current_user = make_admin()
-    payload = (b"a" * BOOK_BINARY_CHUNK_SIZE) + b"tail"
+    payload = EPUB_BYTES + (b"a" * (BOOK_BINARY_CHUNK_SIZE - len(EPUB_BYTES))) + b"tail"
 
     result = await book_files_route.update_book_file(
         book_id=book_id,
@@ -581,9 +628,26 @@ async def test_update_book_file_endpoint_replaces_file_via_chunked_multipart():
             "book_id": book_id,
             "filename": "solo-leveling.epub",
             "content_type": "application/epub+zip",
-            "file_chunks": [b"a" * BOOK_BINARY_CHUNK_SIZE, b"tail"],
+            "file_chunks": [payload[:-4], b"tail"],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_update_book_file_rejects_disallowed_extension_before_storage():
+    """Проверяет отказ до записи файла книги."""
+    book_file_service = FakeBookFileService()
+
+    with pytest.raises(HTTPException) as excinfo:
+        await book_files_route.update_book_file(
+            book_id=uuid.uuid4(),
+            file=make_upload("payload.exe", b"bad", "application/octet-stream"),
+            book_file_service=book_file_service,
+            current_user=make_admin(),
+        )
+
+    assert excinfo.value.status_code == 415
+    assert book_file_service.file_updates == []
 
 
 def test_book_metadata_update_rejects_binary_fields_after_split_endpoints():

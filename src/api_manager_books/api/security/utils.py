@@ -132,6 +132,10 @@ async def require_admin(current_user: UserRead = Depends(get_current_user)) -> U
     return current_user
 
 
+def is_local_bind_host(host: str) -> bool:
+    """Проверяет, что сервер слушает только loopback."""
+    return host in {"127.0.0.1", "localhost"}
+
 
 def ensure_self_signed_cert(
     cert_path: str | Path = "cert.pem",

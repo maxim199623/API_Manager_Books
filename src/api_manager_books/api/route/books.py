@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 
 from api_manager_books.api.dependencies import get_book_service
 from api_manager_books.api.route.book_favorites import favorite_book, unfavorite_book  # noqa: F401
-from api_manager_books.api.route.book_files import _iter_upload_chunks
 from api_manager_books.api.security.utils import require_admin, require_auth
+from api_manager_books.api.upload_policy import iter_upload_chunks_with_policy
 from api_manager_books.application.services.book_service import (
     BookAlreadyExistsError,
     BookNotFoundInServiceError,
@@ -55,8 +55,8 @@ async def add_book(
         book_id = await book_service.add_book(
             current_user.id,
             payload,
-            cover_chunks=_iter_upload_chunks(cover) if cover else None,
-            file_chunks=_iter_upload_chunks(file) if file else None,
+            cover_chunks=iter_upload_chunks_with_policy(cover, "cover") if cover else None,
+            file_chunks=iter_upload_chunks_with_policy(file, "book_file") if file else None,
         )
     except BookAlreadyExistsError as err:
         raise HTTPException(

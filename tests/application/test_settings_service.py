@@ -88,7 +88,7 @@ def make_settings(*, backend: str = "sqlite", echo: bool = False) -> AppSettings
         database=DatabaseSettings(
             backend=backend,
             echo=echo,
-            sqlite=SQLiteSettings(path="library.db"),
+            sqlite=SQLiteSettings(path="var/library.db"),
             postgres=PostgresSettings(
                 host="localhost",
                 port=5432,
@@ -120,7 +120,7 @@ def test_get_current_settings_returns_current_fields_without_password():
 
     assert response.backend == "sqlite"
     assert response.echo is False
-    assert response.sqlite_path == "library.db"
+    assert response.sqlite_path == "var/library.db"
     assert response.postgres_host == "localhost"
     assert response.postgres_port == 5432
     assert response.postgres_user == "postgres"
@@ -148,7 +148,7 @@ async def test_update_without_backend_change_creates_schema_skips_migration_and_
     old_db_manager = FakeDBManager("sqlite")
 
     result = await service.update_settings(
-        SettingsUpdate(echo=True, sqlite_path="updated.db"),
+        SettingsUpdate(echo=True, sqlite_path="var/updated.db"),
         old_db_manager,
     )
 
@@ -160,10 +160,64 @@ async def test_update_without_backend_change_creates_schema_skips_migration_and_
     assert settings_manager.db.backend == "sqlite"
     assert settings_manager.db.echo is True
     assert settings_manager.sqlite is not None
-    assert settings_manager.sqlite.path == "updated.db"
+    assert settings_manager.sqlite.path == "var/updated.db"
     assert result.new_db_manager is new_db_manager
     assert result.response.backend == "sqlite"
     assert result.response.echo is True
+
+
+@pytest.mark.asyncio
+async def test_update_normalizes_sqlite_path_before_creating_db_manager():
+    """Проверяет нормализацию SQLite пути до создания менеджера БД."""
+    settings_manager = FakeSettingsManager(make_settings())
+    factory = FakeDBManagerFactory()
+    service = make_service(settings_manager, factory)
+    old_db_manager = FakeDBManager("sqlite")
+
+    await service.update_settings(
+        SettingsUpdate(sqlite_path="var/../var/books.db"),
+        old_db_manager,
+    )
+
+    assert settings_manager.sqlite is not None
+    assert settings_manager.sqlite.path == "var/books.db"
+
+
+@pytest.mark.asyncio
+async def test_update_rejects_unsafe_sqlite_path_before_creating_db_manager():
+    """Проверяет, что небезопасный путь не доходит до фабрики БД."""
+    settings_manager = FakeSettingsManager(make_settings())
+    factory = FakeDBManagerFactory()
+    service = make_service(settings_manager, factory)
+    old_db_manager = FakeDBManager("sqlite")
+
+    with pytest.raises(ValueError, match="inside var"):
+        await service.update_settings(
+            SettingsUpdate(sqlite_path="../outside.db"),
+            old_db_manager,
+        )
+
+    assert factory.created == []
+    assert settings_manager.saved == 0
+    assert settings_manager.sqlite is not None
+    assert settings_manager.sqlite.path == "var/library.db"
+
+
+@pytest.mark.asyncio
+async def test_update_rejects_memory_sqlite_path_for_api_settings():
+    """Проверяет запрет :memory: для API-обновлений настроек."""
+    settings_manager = FakeSettingsManager(make_settings())
+    factory = FakeDBManagerFactory()
+    service = make_service(settings_manager, factory)
+    old_db_manager = FakeDBManager("sqlite")
+
+    with pytest.raises(ValueError, match="not allowed"):
+        await service.update_settings(
+            SettingsUpdate(sqlite_path=":memory:"),
+            old_db_manager,
+        )
+
+    assert factory.created == []
 
 
 @pytest.mark.asyncio
