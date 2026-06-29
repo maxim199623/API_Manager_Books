@@ -278,3 +278,5 @@ cython_debug/
 /cert.pem
 /key.pem
 /config.ini
+/app.db.backup-20260628-182309
+/app.db-journal

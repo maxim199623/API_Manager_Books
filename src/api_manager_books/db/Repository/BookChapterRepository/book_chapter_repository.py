@@ -197,14 +197,18 @@ class BookChapterRepository:
         Удалить все главы конкретной книги.
         Возвращает количество удалённых глав.
         """
-        stmt = (
-            delete(BookChapter)
-            .where(BookChapter.book_id == book_id)
-            .returning(BookChapter.id)
+        count_stmt = select(func.count()).select_from(BookChapter).where(
+            BookChapter.book_id == book_id
         )
-        res = await self._session.execute(stmt)
-        deleted_ids = res.scalars().all()
-        return len(deleted_ids)
+        count_res = await self._session.execute(count_stmt)
+        deleted_count = count_res.scalar_one()
+
+        if deleted_count == 0:
+            return 0
+
+        stmt = delete(BookChapter).where(BookChapter.book_id == book_id)
+        await self._session.execute(stmt)
+        return deleted_count
 
     async def get_by_ids(self, ids: Sequence[uuid.UUID]) -> Sequence[BookChapter]:
         """

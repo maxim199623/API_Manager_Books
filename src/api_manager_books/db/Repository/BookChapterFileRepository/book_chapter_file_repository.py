@@ -2,7 +2,7 @@ import uuid
 from collections.abc import AsyncIterable, AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_manager_books.db.Repository.BookChapterFileRepository.ORM import (
@@ -162,22 +162,25 @@ class BookChapterFileRepository:
             return False
 
         stmt = (
-            select(BookChapterFileChunk.chunk_index, BookChapterFileChunk.data)
+            select(
+                func.count(BookChapterFileChunk.chunk_index),
+                func.coalesce(func.sum(func.length(BookChapterFileChunk.data)), 0),
+                func.min(BookChapterFileChunk.chunk_index),
+                func.max(BookChapterFileChunk.chunk_index),
+            )
             .where(BookChapterFileChunk.file_id == file_id)
-            .order_by(BookChapterFileChunk.chunk_index.asc())
         )
         res = await self._session.execute(stmt)
-        rows = res.all()
+        actual_chunks_count, actual_size, min_index, max_index = res.one()
 
-        actual_chunks_count = len(rows)
-        actual_size = sum(len(row.data) for row in rows)
-        actual_indexes = [row.chunk_index for row in rows]
-        expected_indexes = list(range(chapter_file.chunks_count))
+        if chapter_file.chunks_count == 0:
+            return actual_chunks_count == 0 and chapter_file.size == 0
 
         return (
             chapter_file.chunks_count == actual_chunks_count
             and chapter_file.size == actual_size
-            and actual_indexes == expected_indexes
+            and min_index == 0
+            and max_index == chapter_file.chunks_count - 1
         )
 
     async def _get_file(self, file_id: uuid.UUID) -> BookChapterFile | None:

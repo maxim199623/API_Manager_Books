@@ -7,6 +7,8 @@ from sqlalchemy.orm import DeclarativeBase
 
 from api_manager_books.config.config import DatabaseSettings
 
+MIGRATION_BATCH_SIZE = 1000
+
 
 class AsyncDBManager:
     """
@@ -128,14 +130,8 @@ class AsyncDBManager:
         async with self._engine.connect() as src_conn, target.engine.begin() as dst_conn:
             # Идём по таблицам в порядке с учётом зависимостей (FK)
             for table in metadata.sorted_tables:
-                # читаем ВСЕ строки из таблицы источника
-                result = await src_conn.execute(select(table))
-                rows = result.mappings().all()  # list[RowMapping]
-
-                if not rows:
-                    continue
-
-                # приводим к list[dict], чтобы точно корректно вставилось
-                payload = [dict(row) for row in rows]
-
-                await dst_conn.execute(table.insert(), payload)
+                result = await src_conn.stream(select(table))
+                async for rows in result.mappings().partitions(MIGRATION_BATCH_SIZE):
+                    payload = [dict(row) for row in rows]
+                    if payload:
+                        await dst_conn.execute(table.insert(), payload)

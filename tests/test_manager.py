@@ -1,10 +1,13 @@
+import inspect
 from pathlib import Path
 
 import pytest
-from sqlalchemy import Integer, String, inspect, select
+from sqlalchemy import Integer, String, select
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from api_manager_books.config.config import SettingsManager
+from api_manager_books.db.Manager import manager as manager_module
 from api_manager_books.db.Manager.manager import AsyncDBManager
 
 # ---------- Локальная база и тестовая таблица ----------
@@ -85,7 +88,7 @@ class TestAsyncDBManager:
         async with async_db_manager.engine.begin() as conn:
             def _get_tables(sync_conn):
                 """Возвращает таблицы из метаданных."""
-                inspector = inspect(sync_conn)
+                inspector = sa_inspect(sync_conn)
                 return inspector.get_table_names()
 
             tables = await conn.run_sync(_get_tables)
@@ -97,7 +100,7 @@ class TestAsyncDBManager:
 
         async with async_db_manager.engine.begin() as conn:
             tables_after = await conn.run_sync(
-                lambda sync_conn: inspect(sync_conn).get_table_names()
+                lambda sync_conn: sa_inspect(sync_conn).get_table_names()
             )
 
         assert "test_items" not in tables_after
@@ -163,3 +166,53 @@ class TestAsyncDBManager:
 
         # Повторный dispose тоже не должен падать
         await async_db_manager.dispose()
+
+    def test_migrate_to_uses_batch_processing_without_loading_table_into_memory(self):
+        """Проверяет, что миграция не загружает таблицу целиком через mappings().all()."""
+        source = inspect.getsource(AsyncDBManager.migrate_to)
+
+        assert manager_module.MIGRATION_BATCH_SIZE == 1000
+        assert ".mappings().all()" not in source
+        assert ".partitions(" in source
+
+    @pytest.mark.asyncio
+    async def test_migrate_to_copies_more_rows_than_batch_size(
+        self,
+        settings_manager: SettingsManager,
+        tmp_path: Path,
+    ):
+        """Проверяет перенос данных, когда строк больше одного батча."""
+        source_manager = AsyncDBManager(settings_manager.db, BaseTestItem)
+
+        target_settings = SettingsManager(tmp_path / "target_config.ini")
+        target_settings.set_backend("sqlite")
+        target_settings.set_sqlite_path(str(tmp_path / "target.db"))
+        target_settings.set_echo(False)
+        target_settings.save()
+        target_manager = AsyncDBManager(target_settings.db, BaseTestItem)
+
+        rows_count = manager_module.MIGRATION_BATCH_SIZE + 3
+        try:
+            await source_manager.create_schema()
+            await target_manager.create_schema()
+
+            async with source_manager.session() as session:
+                session.add_all(
+                    BaseTestItem(name=f"item-{index}")
+                    for index in range(rows_count)
+                )
+
+            await source_manager.migrate_to(target_manager)
+
+            async with target_manager.session() as session:
+                result = await session.execute(
+                    select(BaseTestItem.name).order_by(BaseTestItem.id)
+                )
+
+            assert result.scalars().all() == [
+                f"item-{index}"
+                for index in range(rows_count)
+            ]
+        finally:
+            await source_manager.dispose()
+            await target_manager.dispose()

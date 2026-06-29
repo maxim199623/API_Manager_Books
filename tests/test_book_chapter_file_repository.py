@@ -1,3 +1,5 @@
+import inspect
+
 import pytest
 import pytest_asyncio
 
@@ -194,3 +196,49 @@ async def test_validate_integrity_rejects_chunk_indexes_that_do_not_start_from_z
     await repository_memory_session.flush()
 
     assert await chapter_file_repo.validate_integrity(created.id) is False
+
+
+async def test_validate_integrity_rejects_wrong_stored_size(
+    repository_memory_session,
+    chapter_file_repo: BookChapterFileRepository,
+):
+    """Проверяет, что неверный размер файла не считается валидным."""
+    chapter = await _create_chapter(repository_memory_session)
+    created = await chapter_file_repo.create_file(
+        chapter.id,
+        file_name="wrong-size.bin",
+        content_type="application/octet-stream",
+        chunks=[b"ab", b"cd"],
+    )
+
+    file_model = await repository_memory_session.get(BookChapterFile, created.id)
+    file_model.size = 999
+    await repository_memory_session.flush()
+
+    assert await chapter_file_repo.validate_integrity(created.id) is False
+
+
+async def test_validate_integrity_accepts_empty_file(
+    repository_memory_session,
+    chapter_file_repo: BookChapterFileRepository,
+):
+    """Проверяет валидность пустого файла без чанков."""
+    chapter = await _create_chapter(repository_memory_session)
+    created = await chapter_file_repo.create_file(
+        chapter.id,
+        file_name="empty.bin",
+        content_type="application/octet-stream",
+        chunks=None,
+    )
+
+    assert created.size == 0
+    assert created.chunks_count == 0
+    assert await chapter_file_repo.validate_integrity(created.id) is True
+
+
+async def test_validate_integrity_does_not_load_all_chunks_into_memory():
+    """Проверяет, что проверка целостности не использует res.all()."""
+    source = inspect.getsource(BookChapterFileRepository.validate_integrity)
+
+    assert ".all()" not in source
+    assert "func.count" in source

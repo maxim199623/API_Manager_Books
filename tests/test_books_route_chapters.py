@@ -152,6 +152,26 @@ def test_single_chapter_route_is_registered_with_full_response_model():
     assert route.response_model.__name__ == "BookChapterRead"
 
 
+def test_book_chapter_read_does_not_expose_binary_file_field():
+    """Проверяет, что обычный ответ главы не содержит бинарное поле file."""
+    book_id = uuid.uuid4()
+    chapter = make_chapter(book_id=book_id, chapter_num=7)
+    chapter.file = b"large-binary-payload"
+
+    payload = books_route.BookChapterRead.model_validate(
+        chapter,
+        from_attributes=True,
+    ).model_dump()
+
+    assert payload["id"] == chapter.id
+    assert payload["book_id"] == book_id
+    assert payload["chapter"] == 7
+    assert payload["chapter_name"] == "Finale"
+    assert payload["description"] == "Text"
+    assert payload["created_at"] == chapter.created_at
+    assert "file" not in payload
+
+
 @pytest.mark.asyncio
 async def test_get_book_chapters_returns_light_chapter_headers():
     """Проверяет получает книгу главы возвращает краткий главу заголовки."""

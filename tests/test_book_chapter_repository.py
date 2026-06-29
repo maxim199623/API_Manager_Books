@@ -1,3 +1,5 @@
+import inspect
+
 import pytest
 import pytest_asyncio
 
@@ -203,6 +205,14 @@ class TestBookChapterRepository:
 
         count_after = await chapter_repo.count_chapters(book.id)
         assert count_after == 0
+
+    async def test_delete_all_for_book_does_not_collect_deleted_ids(self):
+        """Проверяет, что массовое удаление глав не собирает все id в память."""
+        source = inspect.getsource(BookChapterRepository.delete_all_for_book)
+
+        assert ".returning(" not in source
+        assert ".scalars().all()" not in source
+        assert "func.count" in source
 
     async def test_ensure_exists_errors(
         self,

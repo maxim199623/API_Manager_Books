@@ -39,11 +39,14 @@ class BookChapterListRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class BookChapterRead(BookChapterBase):
+class BookChapterRead(BaseModel):
     """Полное представление главы книги."""
 
     id: uuid.UUID
     book_id: uuid.UUID
+    chapter: int
+    chapter_name: str | None = None
+    description: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -142,14 +142,20 @@ class LogRepository:
         Удалить все логи, старше указанного момента.
         Возвращает количество удалённых записей.
         """
-        stmt = (
-            delete(LogEntry)
+        count_stmt = (
+            select(func.count())
+            .select_from(LogEntry)
             .where(LogEntry.created_at < before)
-            .returning(LogEntry.id)
         )
-        res = await self._session.execute(stmt)
-        deleted_ids = res.scalars().all()
-        return len(deleted_ids)
+        count_res = await self._session.execute(count_stmt)
+        deleted_count = count_res.scalar_one()
+
+        if deleted_count == 0:
+            return 0
+
+        stmt = delete(LogEntry).where(LogEntry.created_at < before)
+        await self._session.execute(stmt)
+        return deleted_count
 
     async def list_read_chapter_ids_for_user(
         self,
@@ -271,27 +277,32 @@ class LogRepository:
             Удаляет историю чтения (логи get_chapter) пользователя
             для конкретной книги.
             """
-        stmt = (
-            delete(LogEntry).where(LogEntry.id.in_(select(LogEntry.id).select_from(
+        read_history_ids = (
+            select(LogEntry.id)
+            .select_from(
                 join(
-                            LogEntry,
-                            BookChapter,
-                            LogEntry.entity_id == BookChapter.id,
-                        )
-                    ).where(
-                        LogEntry.user_id == user_id,
-                        LogEntry.action == "get_chapter",
-                        LogEntry.entity == "book_chapters",
-                        BookChapter.book_id == book_id,
-                    )
+                    LogEntry,
+                    BookChapter,
+                    LogEntry.entity_id == BookChapter.id,
                 )
             )
-            .returning(LogEntry.id)
+            .where(
+                LogEntry.user_id == user_id,
+                LogEntry.action == "get_chapter",
+                LogEntry.entity == "book_chapters",
+                BookChapter.book_id == book_id,
+            )
         )
 
-        res = await self._session.execute(stmt)
-        deleted_ids = res.scalars().all()
-        deleted_count = len(deleted_ids)
+        count_stmt = select(func.count()).select_from(LogEntry).where(
+            LogEntry.id.in_(read_history_ids)
+        )
+        count_res = await self._session.execute(count_stmt)
+        deleted_count = count_res.scalar_one()
+
+        if deleted_count > 0:
+            stmt = delete(LogEntry).where(LogEntry.id.in_(read_history_ids))
+            await self._session.execute(stmt)
 
         await self.log_action(
             user_id=user_id,
