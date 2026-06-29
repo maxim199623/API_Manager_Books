@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -87,12 +88,26 @@ async def get_books(
         SortDirection,
         Query(description="Направление сортировки: asc или desc"),
     ] = "desc",
+    cursor_created_at: Annotated[
+        datetime | None,
+        Query(description="Keyset-курсор created_at для тяжелой пагинации"),
+    ] = None,
+    cursor_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Keyset-курсор id для тяжелой пагинации"),
+    ] = None,
     book_service: BookService = Depends(get_book_service),
     current_user: UserRead = Depends(require_auth),
 ):
     """
     Получить список книг с фильтрацией и сортировкой.
     """
+    cursor_kwargs = {}
+    if cursor_created_at is not None and cursor_id is not None:
+        cursor_kwargs = {
+            "cursor_created_at": cursor_created_at,
+            "cursor_id": cursor_id,
+        }
     return await book_service.list_books(
         user_id=current_user.id,
         author=author,
@@ -101,6 +116,7 @@ async def get_books(
         limit=limit,
         sort_by=sort_by,
         sort_dir=sort_dir,
+        **cursor_kwargs,
     )
 
 @router.patch("/{book_id}", status_code=status.HTTP_200_OK)

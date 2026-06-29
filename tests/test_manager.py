@@ -3,11 +3,9 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import Integer, String, select, text
-from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from api_manager_books.config.config import SettingsManager
-from api_manager_books.db.base import Base
 from api_manager_books.db.Manager import manager as manager_module
 from api_manager_books.db.Manager.manager import AsyncDBManager
 
@@ -59,6 +57,21 @@ def async_db_manager(settings_manager: SettingsManager) -> AsyncDBManager:
     """
     return AsyncDBManager(settings_manager.db, BaseTestItem)
 
+
+async def _create_base_test_schema(db_manager: AsyncDBManager) -> None:
+    """Создает минимальную таблицу для тестов менеджера."""
+    async with db_manager.engine.begin() as conn:
+        await conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS test_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name VARCHAR(100) NOT NULL
+                )
+                """
+            )
+        )
+
 class TestAsyncDBManager:
     """Проверяет асинхронный менеджер БД."""
 
@@ -79,39 +92,11 @@ class TestAsyncDBManager:
         assert engine.echo is settings_manager.db.echo is False
 
     @pytest.mark.asyncio
-    async def test_create_and_drop_schema(self, async_db_manager: AsyncDBManager):
-        """
-        create_schema создаёт таблицы, drop_schema их удаляет.
-        """
-        # создаём схему
-        await async_db_manager.create_schema()
-
-        async with async_db_manager.engine.begin() as conn:
-            def _get_tables(sync_conn):
-                """Возвращает таблицы из метаданных."""
-                inspector = sa_inspect(sync_conn)
-                return inspector.get_table_names()
-
-            tables = await conn.run_sync(_get_tables)
-
-        assert "test_items" in tables
-
-        # удаляем схему
-        await async_db_manager.drop_schema()
-
-        async with async_db_manager.engine.begin() as conn:
-            tables_after = await conn.run_sync(
-                lambda sync_conn: sa_inspect(sync_conn).get_table_names()
-            )
-
-        assert "test_items" not in tables_after
-
-    @pytest.mark.asyncio
     async def test_session_commit(self, async_db_manager: AsyncDBManager):
         """
         Проверяем, что через контекстный менеджер сессии данные действительно коммитятся.
         """
-        await async_db_manager.create_schema()
+        await _create_base_test_schema(async_db_manager)
 
         # вставка
         async with async_db_manager.session() as session:
@@ -132,7 +117,7 @@ class TestAsyncDBManager:
         """
         Если из блока сессии вылетело исключение, изменения откатываются.
         """
-        await async_db_manager.create_schema()
+        await _create_base_test_schema(async_db_manager)
 
         # пробуем вставить и специально падаем
         with pytest.raises(RuntimeError):
@@ -194,8 +179,8 @@ class TestAsyncDBManager:
 
         rows_count = manager_module.MIGRATION_BATCH_SIZE + 3
         try:
-            await source_manager.create_schema()
-            await target_manager.create_schema()
+            await _create_base_test_schema(source_manager)
+            await _create_base_test_schema(target_manager)
 
             async with source_manager.session() as session:
                 session.add_all(
@@ -217,42 +202,3 @@ class TestAsyncDBManager:
         finally:
             await source_manager.dispose()
             await target_manager.dispose()
-
-    @pytest.mark.asyncio
-    async def test_upgrade_schema_adds_refresh_columns_to_existing_users_table(
-        self,
-        settings_manager: SettingsManager,
-    ):
-        """Проверяет добавление nullable refresh-колонок без Alembic."""
-        db_manager = AsyncDBManager(settings_manager.db, Base)
-        try:
-            async with db_manager.engine.begin() as conn:
-                await conn.execute(
-                    text(
-                        """
-                        CREATE TABLE users (
-                            id CHAR(32) PRIMARY KEY,
-                            email VARCHAR(255) NOT NULL UNIQUE,
-                            password_hash BLOB NOT NULL,
-                            role VARCHAR(20) NOT NULL,
-                            session CHAR(32),
-                            created_at DATETIME NOT NULL
-                        )
-                        """
-                    )
-                )
-
-            await db_manager.upgrade_schema()
-
-            async with db_manager.engine.begin() as conn:
-                columns = await conn.run_sync(
-                    lambda sync_conn: {
-                        column["name"]
-                        for column in sa_inspect(sync_conn).get_columns("users")
-                    }
-                )
-
-            assert "refresh_token_hash" in columns
-            assert "refresh_token_expires_at" in columns
-        finally:
-            await db_manager.dispose()

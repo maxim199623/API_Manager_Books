@@ -4,10 +4,7 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
-from api_manager_books.db.Repository.BookRepository.ORM import Book
 from api_manager_books.db.Repository.LogRepository.log_repository import LogRepository
-from api_manager_books.db.Repository.UserRepository.ORM import User
 from api_manager_books.schemas.logs import LogCreate
 
 # ----------------------------------------------------------------------
@@ -230,51 +227,9 @@ class TestLogRepository:
         assert ".scalars().all()" not in source
         assert "func.count" in source
 
-    async def test_clear_read_history_counts_deleted_rows_without_collecting_ids(
-        self,
-        repository_session,
-        log_repo: LogRepository,
-    ):
-        """Проверяет счетчик очистки истории чтения и лог операции."""
-        user = User(
-            email="reader-history@example.com",
-            password_hash=b"hash",
-            role="user",
-        )
-        book = Book(title="History Book", author="Author")
-        chapter_1 = BookChapter(book=book, chapter=1, description="One")
-        chapter_2 = BookChapter(book=book, chapter=2, description="Two")
-        repository_session.add_all([user, book])
-        await repository_session.flush()
-
-        await log_repo.log_action(
-            user_id=user.id,
-            action="get_chapter",
-            entity="book_chapters",
-            entity_id=chapter_1.id,
-            details="read 1",
-        )
-        await log_repo.log_action(
-            user_id=user.id,
-            action="get_chapter",
-            entity="book_chapters",
-            entity_id=chapter_2.id,
-            details="read 2",
-        )
-
-        await log_repo.clear_read_history_for_user_and_book(
-            user_id=user.id,
-            book_id=book.id,
-        )
-
-        logs = await log_repo.list_logs(action="clear_read_history", entity="books")
-        assert len(logs) == 1
-        assert "удалено 2 записей" in logs[0].details
-
-    async def test_clear_read_history_does_not_collect_deleted_ids(self):
-        """Проверяет, что очистка истории чтения не собирает все удаленные id."""
-        source = inspect.getsource(LogRepository.clear_read_history_for_user_and_book)
-
-        assert ".returning(" not in source
-        assert ".scalars().all()" not in source
-        assert "func.count" in source
+    async def test_log_repository_has_no_reading_progress_methods(self):
+        """Проверяет, что аудит не является источником истории чтения."""
+        assert not hasattr(LogRepository, "list_read_chapter_ids_for_user")
+        assert not hasattr(LogRepository, "list_read_chapter_ids_for_user_and_book")
+        assert not hasattr(LogRepository, "count_read_chapters_for_user_and_book")
+        assert not hasattr(LogRepository, "clear_read_history_for_user_and_book")

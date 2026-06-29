@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api_manager_books.db.base import Base
@@ -62,5 +62,8 @@ class LogEntry(Base):
     # Связь с пользователем
     user = relationship("User", backref="logs")
 
-
+    __table_args__ = (
+        Index("ix_db_logs_user_action_entity_created_at", "user_id", "action", "entity", "created_at"),
+        Index("ix_db_logs_user_action_entity_entity_id", "user_id", "action", "entity", "entity_id"),
+    )
 

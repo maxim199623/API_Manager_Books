@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, LargeBinary, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api_manager_books.db.base import Base
@@ -78,6 +78,10 @@ class BookChapterFile(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="BookChapterFileChunk.chunk_index",
+    )
+
+    __table_args__ = (
+        Index("ix_book_chapter_files_chapter_created_id", "chapter_id", "created_at", "id"),
     )
 
 

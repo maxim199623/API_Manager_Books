@@ -8,6 +8,7 @@ from api_manager_books.bootstrap.admin import (
 )
 from api_manager_books.db.base import Base
 from api_manager_books.db.Manager.manager import AsyncDBManager
+from api_manager_books.db.migrations import run_migrations
 from api_manager_books.db.Repository.UserRepository.ORM import User
 from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
@@ -19,11 +20,12 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest_asyncio.fixture
-async def db_manager():
+async def db_manager(tmp_path):
+    db_path = tmp_path / "bootstrap.db"
     settings = DatabaseSettings(
         backend="sqlite",
         echo=False,
-        sqlite=SQLiteSettings(path=":memory:"),
+        sqlite=SQLiteSettings(path=str(db_path)),
         postgres=PostgresSettings(
             host="localhost",
             port=5432,
@@ -33,7 +35,7 @@ async def db_manager():
         ),
     )
     manager = AsyncDBManager(settings, Base)
-    await manager.create_schema()
+    await run_migrations(settings.get_url)
 
     try:
         yield manager

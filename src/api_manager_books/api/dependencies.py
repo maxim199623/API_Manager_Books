@@ -21,6 +21,9 @@ from api_manager_books.db.Repository.BookChapterRepository.book_chapter_reposito
 from api_manager_books.db.Repository.BookRepository.book_repository import BookRepository
 from api_manager_books.db.Repository.FavoriteBookRepository.favorite_book_repository import FavoriteBookRepository
 from api_manager_books.db.Repository.LogRepository.log_repository import LogRepository
+from api_manager_books.db.Repository.ReadingProgressRepository.reading_progress_repository import (
+    ReadingProgressRepository,
+)
 from api_manager_books.db.Repository.UserRepository.user_repository import UserRepository
 from api_manager_books.schemas.config import DatabaseSettings
 
@@ -44,6 +47,11 @@ async def get_user_repo(session=Depends(get_session)) -> UserRepository:
 async def get_log_repo(session=Depends(get_session)) -> LogRepository:
     """Получаем LogRepository"""
     return LogRepository(session)
+
+
+async def get_reading_progress_repo(session=Depends(get_session)) -> ReadingProgressRepository:
+    """Получаем ReadingProgressRepository"""
+    return ReadingProgressRepository(session)
 
 
 async def get_user_service(
@@ -124,12 +132,14 @@ async def get_chapter_service(
     book_repo: BookRepository = Depends(get_book_repo),
     chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
     log_repo: LogRepository = Depends(get_log_repo),
+    reading_progress_repo: ReadingProgressRepository = Depends(get_reading_progress_repo),
 ) -> ChapterService:
     """Получаем ChapterService"""
     return ChapterService(
         book_repo=book_repo,
         chapter_repo=chapter_repo,
         log_repo=log_repo,
+        reading_progress_repo=reading_progress_repo,
     )
 
 
@@ -152,12 +162,14 @@ async def get_chapter_file_service(
 async def get_reading_history_service(
     book_repo: BookRepository = Depends(get_book_repo),
     chapter_repo: BookChapterRepository = Depends(get_book_chapter_repo),
+    reading_progress_repo: ReadingProgressRepository = Depends(get_reading_progress_repo),
     log_repo: LogRepository = Depends(get_log_repo),
 ) -> ReadingHistoryService:
     """Получаем ReadingHistoryService"""
     return ReadingHistoryService(
         book_repo=book_repo,
         chapter_repo=chapter_repo,
+        progress_repo=reading_progress_repo,
         log_repo=log_repo,
     )
 

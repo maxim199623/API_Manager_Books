@@ -1,5 +1,8 @@
 import uuid
+from datetime import datetime
 from typing import Protocol
+
+from api_manager_books.schemas.logs import LogCreate
 
 
 class BookLookup(Protocol):
@@ -18,8 +21,8 @@ class ChapterLookup(Protocol):
         ...
 
 
-class ReadingLogStorage(Protocol):
-    """Хранилище истории чтения."""
+class ReadingProgressStorage(Protocol):
+    """Хранилище прогресса чтения."""
 
     async def list_read_chapter_ids_for_user(
         self,
@@ -27,6 +30,8 @@ class ReadingLogStorage(Protocol):
         user_id: uuid.UUID,
         offset: int,
         limit: int,
+        cursor_read_at: datetime | None = None,
+        cursor_chapter_id: uuid.UUID | None = None,
     ) -> list[uuid.UUID]:
         """Возвращает ID прочитанных глав пользователя."""
         ...
@@ -38,6 +43,8 @@ class ReadingLogStorage(Protocol):
         book_id: uuid.UUID,
         offset: int,
         limit: int,
+        cursor_read_at: datetime | None = None,
+        cursor_chapter_id: uuid.UUID | None = None,
     ) -> list[uuid.UUID]:
         """Возвращает ID прочитанных глав пользователя по книге."""
         ...
@@ -61,6 +68,14 @@ class ReadingLogStorage(Protocol):
         ...
 
 
+class LogWriter(Protocol):
+    """Хранилище аудита."""
+
+    async def log_from_dto(self, payload: LogCreate) -> None:
+        """Записывает аудит-событие."""
+        ...
+
+
 class ReadingHistoryService:
     """Сервис сценариев истории чтения."""
 
@@ -68,11 +83,13 @@ class ReadingHistoryService:
         self,
         book_repo: BookLookup,
         chapter_repo: ChapterLookup,
-        log_repo: ReadingLogStorage,
+        progress_repo: ReadingProgressStorage,
+        log_repo: LogWriter,
     ):
         """Инициализирует зависимости истории чтения."""
         self._book_repo = book_repo
         self._chapter_repo = chapter_repo
+        self._progress_repo = progress_repo
         self._log_repo = log_repo
 
     async def list_read_chapters(
@@ -81,20 +98,30 @@ class ReadingHistoryService:
         book_id: uuid.UUID | None,
         offset: int,
         limit: int,
+        cursor_read_at: datetime | None = None,
+        cursor_chapter_id: uuid.UUID | None = None,
     ) -> list[int]:
         """Вернуть номера прочитанных глав пользователя."""
+        cursor_kwargs = {}
+        if cursor_read_at is not None and cursor_chapter_id is not None:
+            cursor_kwargs = {
+                "cursor_read_at": cursor_read_at,
+                "cursor_chapter_id": cursor_chapter_id,
+            }
         if book_id is None:
-            chapter_ids = await self._log_repo.list_read_chapter_ids_for_user(
+            chapter_ids = await self._progress_repo.list_read_chapter_ids_for_user(
                 user_id=user_id,
                 offset=offset,
                 limit=limit,
+                **cursor_kwargs,
             )
         else:
-            chapter_ids = await self._log_repo.list_read_chapter_ids_for_user_and_book(
+            chapter_ids = await self._progress_repo.list_read_chapter_ids_for_user_and_book(
                 user_id=user_id,
                 book_id=book_id,
                 offset=offset,
                 limit=limit,
+                **cursor_kwargs,
             )
 
         if not chapter_ids:
@@ -105,7 +132,7 @@ class ReadingHistoryService:
     async def count_read_chapters(self, user_id: uuid.UUID, book_id: uuid.UUID) -> int:
         """Вернуть количество прочитанных глав существующей книги."""
         await self._book_repo.ensure_exists(book_id)
-        return await self._log_repo.count_read_chapters_for_user_and_book(
+        return await self._progress_repo.count_read_chapters_for_user_and_book(
             user_id=user_id,
             book_id=book_id,
         )
@@ -116,7 +143,19 @@ class ReadingHistoryService:
         book_id: uuid.UUID,
     ) -> None:
         """Очистить историю чтения книги для пользователя."""
-        await self._log_repo.clear_read_history_for_user_and_book(
+        deleted_count = await self._progress_repo.clear_read_history_for_user_and_book(
             user_id=user_id,
             book_id=book_id,
+        )
+        await self._log_repo.log_from_dto(
+            LogCreate(
+                user_id=user_id,
+                action="clear_read_history",
+                entity="books",
+                entity_id=book_id,
+                details=(
+                    f"Пользователь #{user_id} очистил историю чтения книги #{book_id} "
+                    f"(удалено {deleted_count} записей прогресса)"
+                ),
+            )
         )

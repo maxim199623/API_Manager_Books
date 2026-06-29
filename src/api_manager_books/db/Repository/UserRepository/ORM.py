@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, LargeBinary, String, func
+from sqlalchemy import DateTime, Index, LargeBinary, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -52,4 +52,9 @@ class User(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_users_refresh_token_hash", "refresh_token_hash"),
+        Index("ix_users_role", "role"),
     )

@@ -9,6 +9,7 @@ from api_manager_books.bootstrap.admin import create_initial_admin
 from api_manager_books.config.config import SettingsManager
 from api_manager_books.db.base import Base
 from api_manager_books.db.Manager.manager import AsyncDBManager
+from api_manager_books.db.migrations import run_migrations
 
 # --------- LIFESPAN: старт/остановка приложения ---------
 
@@ -21,9 +22,7 @@ async def lifespan(app: FastAPI):
     # создаём менеджер БД
     db_manager = AsyncDBManager(settings.db, Base)
 
-    # Создаём схемы (таблицы) один раз при старте
-    await db_manager.create_schema()
-    await db_manager.upgrade_schema()
+    await run_migrations(settings.db.get_url)
 
     # Пустая БД не должна стартовать с известными учетными данными.
     await create_initial_admin(db_manager)

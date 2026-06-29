@@ -72,6 +72,20 @@ class LogWriter(Protocol):
         ...
 
 
+class ReadingProgressWriter(Protocol):
+    """Хранилище прогресса чтения."""
+
+    async def mark_chapter_read(
+        self,
+        *,
+        user_id: uuid.UUID,
+        book_id: uuid.UUID,
+        chapter_id: uuid.UUID,
+    ) -> object:
+        """Отмечает главу прочитанной."""
+        ...
+
+
 class EmptyChapterListError(Exception):
     """Список глав пуст."""
 
@@ -88,11 +102,13 @@ class ChapterService:
         book_repo: BookLookup,
         chapter_repo: ChapterStorage,
         log_repo: LogWriter,
+        reading_progress_repo: ReadingProgressWriter,
     ):
         """Инициализирует зависимости сервиса глав."""
         self._book_repo = book_repo
         self._chapter_repo = chapter_repo
         self._log_repo = log_repo
+        self._reading_progress_repo = reading_progress_repo
 
     async def list_chapter_headers(self, book_id: uuid.UUID):
         """Вернуть заголовки глав существующей книги."""
@@ -115,6 +131,12 @@ class ChapterService:
         chapter = await self._chapter_repo.ensure_exists_by_book_and_number(
             book_id=book_id,
             chapter_num=chapter_num,
+        )
+
+        await self._reading_progress_repo.mark_chapter_read(
+            user_id=user_id,
+            book_id=book_id,
+            chapter_id=chapter.id,
         )
 
         await self._log_repo.log_from_dto(

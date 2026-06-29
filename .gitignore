@@ -289,3 +289,4 @@ cython_debug/
 /start.dev.sh
 /app.db.backup-20260628-182309
 /app.db-journal
+/docs/database-improvement-plan.md

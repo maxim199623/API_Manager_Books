@@ -107,6 +107,39 @@ class FakeLogRepo:
         self.entries.append(payload)
 
 
+class FakeReadingProgressRepo:
+    """Тестовый репозиторий прогресса чтения."""
+
+    def __init__(self):
+        """Инициализирует тестовый объект."""
+        self.calls = []
+
+    async def mark_chapter_read(self, *, user_id, book_id, chapter_id):
+        """Сохраняет тестовую отметку чтения."""
+        self.calls.append(
+            {
+                "user_id": user_id,
+                "book_id": book_id,
+                "chapter_id": chapter_id,
+            }
+        )
+
+
+def make_service(
+    book_repo,
+    chapter_repo,
+    log_repo,
+    progress_repo: FakeReadingProgressRepo | None = None,
+) -> ChapterService:
+    """Создает сервис с тестовыми зависимостями."""
+    return ChapterService(
+        book_repo=book_repo,
+        chapter_repo=chapter_repo,
+        log_repo=log_repo,
+        reading_progress_repo=progress_repo or FakeReadingProgressRepo(),
+    )
+
+
 @pytest.mark.asyncio
 async def test_list_chapter_headers_checks_book_and_returns_headers():
     """Проверяет заголовки глав после проверки книги."""
@@ -117,7 +150,7 @@ async def test_list_chapter_headers_checks_book_and_returns_headers():
     ]
     book_repo = FakeBookRepo()
     chapter_repo = FakeChapterRepo(headers=headers)
-    service = ChapterService(book_repo, chapter_repo, FakeLogRepo())
+    service = make_service(book_repo, chapter_repo, FakeLogRepo())
 
     result = await service.list_chapter_headers(book_id)
 
@@ -131,7 +164,7 @@ async def test_list_chapter_headers_propagates_book_not_found_without_chapter_ca
     """Проверяет отсутствие вызова глав при пропавшей книге."""
     book_id = uuid.uuid4()
     chapter_repo = FakeChapterRepo(headers=[SimpleNamespace(chapter=1, chapter_name="Hidden")])
-    service = ChapterService(FakeBookRepo(exists=False), chapter_repo, FakeLogRepo())
+    service = make_service(FakeBookRepo(exists=False), chapter_repo, FakeLogRepo())
 
     with pytest.raises(BookNotFoundError):
         await service.list_chapter_headers(book_id)
@@ -145,7 +178,7 @@ async def test_count_chapters_checks_book_and_returns_book_id_with_count():
     book_id = uuid.uuid4()
     book_repo = FakeBookRepo()
     chapter_repo = FakeChapterRepo(count=7)
-    service = ChapterService(book_repo, chapter_repo, FakeLogRepo())
+    service = make_service(book_repo, chapter_repo, FakeLogRepo())
 
     result = await service.count_chapters(book_id)
 
@@ -171,12 +204,20 @@ async def test_get_chapter_returns_chapter_and_logs_reading():
     )
     chapter_repo = FakeChapterRepo(chapter=chapter)
     log_repo = FakeLogRepo()
-    service = ChapterService(FakeBookRepo(), chapter_repo, log_repo)
+    progress_repo = FakeReadingProgressRepo()
+    service = make_service(FakeBookRepo(), chapter_repo, log_repo, progress_repo)
 
     result = await service.get_chapter(user_id, book_id, chapter_num)
 
     assert result == chapter
     assert chapter_repo.chapter_calls == [(book_id, chapter_num)]
+    assert progress_repo.calls == [
+        {
+            "user_id": user_id,
+            "book_id": book_id,
+            "chapter_id": chapter.id,
+        }
+    ]
     assert len(log_repo.entries) == 1
     assert log_repo.entries[0].user_id == user_id
     assert log_repo.entries[0].action == "get_chapter"
@@ -195,12 +236,14 @@ async def test_get_chapter_propagates_chapter_not_found_without_log():
     book_id = uuid.uuid4()
     chapter_repo = FakeChapterRepo(chapter_exists=False)
     log_repo = FakeLogRepo()
-    service = ChapterService(FakeBookRepo(), chapter_repo, log_repo)
+    progress_repo = FakeReadingProgressRepo()
+    service = make_service(FakeBookRepo(), chapter_repo, log_repo, progress_repo)
 
     with pytest.raises(BookChapterNotFoundError):
         await service.get_chapter(user_id, book_id, 5)
 
     assert chapter_repo.chapter_calls == [(book_id, 5)]
+    assert progress_repo.calls == []
     assert log_repo.entries == []
 
 
@@ -216,7 +259,7 @@ async def test_add_chapters_creates_chapters_and_logs_operation():
     book_repo = FakeBookRepo()
     chapter_repo = FakeChapterRepo()
     log_repo = FakeLogRepo()
-    service = ChapterService(book_repo, chapter_repo, log_repo)
+    service = make_service(book_repo, chapter_repo, log_repo)
 
     result = await service.add_chapters(user_id, book_id, chapters)
 
@@ -242,7 +285,7 @@ async def test_add_chapters_rejects_empty_list_without_create_or_log():
     book_repo = FakeBookRepo()
     chapter_repo = FakeChapterRepo()
     log_repo = FakeLogRepo()
-    service = ChapterService(book_repo, chapter_repo, log_repo)
+    service = make_service(book_repo, chapter_repo, log_repo)
 
     with pytest.raises(EmptyChapterListError):
         await service.add_chapters(user_id, book_id, [])
@@ -264,7 +307,7 @@ async def test_add_chapters_rejects_duplicate_chapter_numbers_without_create_or_
     book_repo = FakeBookRepo()
     chapter_repo = FakeChapterRepo()
     log_repo = FakeLogRepo()
-    service = ChapterService(book_repo, chapter_repo, log_repo)
+    service = make_service(book_repo, chapter_repo, log_repo)
 
     with pytest.raises(DuplicateChapterNumbersInRequestError):
         await service.add_chapters(user_id, book_id, chapters)
@@ -284,7 +327,7 @@ async def test_add_chapters_propagates_book_not_found_without_create_or_log():
     ]
     chapter_repo = FakeChapterRepo()
     log_repo = FakeLogRepo()
-    service = ChapterService(FakeBookRepo(exists=False), chapter_repo, log_repo)
+    service = make_service(FakeBookRepo(exists=False), chapter_repo, log_repo)
 
     with pytest.raises(BookNotFoundError):
         await service.add_chapters(user_id, book_id, chapters)
@@ -304,7 +347,7 @@ async def test_add_chapters_propagates_integrity_error_without_log():
     error = IntegrityError("insert", {}, Exception("duplicate"))
     chapter_repo = FakeChapterRepo(create_error=error)
     log_repo = FakeLogRepo()
-    service = ChapterService(FakeBookRepo(), chapter_repo, log_repo)
+    service = make_service(FakeBookRepo(), chapter_repo, log_repo)
 
     with pytest.raises(IntegrityError):
         await service.add_chapters(user_id, book_id, chapters)
@@ -323,7 +366,7 @@ async def test_update_chapter_updates_chapter_and_logs_operation():
     chapter = SimpleNamespace(id=uuid.uuid4())
     chapter_repo = FakeChapterRepo(chapter=chapter)
     log_repo = FakeLogRepo()
-    service = ChapterService(FakeBookRepo(), chapter_repo, log_repo)
+    service = make_service(FakeBookRepo(), chapter_repo, log_repo)
 
     result = await service.update_chapter(user_id, book_id, chapter_num, payload)
 
@@ -349,7 +392,7 @@ async def test_update_chapter_propagates_chapter_not_found_without_log():
     payload = BookChapterUpdate(description="Updated text")
     chapter_repo = FakeChapterRepo(update_error=BookChapterNotFoundError())
     log_repo = FakeLogRepo()
-    service = ChapterService(FakeBookRepo(), chapter_repo, log_repo)
+    service = make_service(FakeBookRepo(), chapter_repo, log_repo)
 
     with pytest.raises(BookChapterNotFoundError):
         await service.update_chapter(user_id, book_id, chapter_num, payload)

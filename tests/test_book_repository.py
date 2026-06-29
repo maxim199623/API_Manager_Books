@@ -16,6 +16,12 @@ async def book_repo(repository_session) -> BookRepository:
     return BookRepository(repository_session)
 
 
+async def iter_chunks(*chunks: bytes):
+    """Итерирует тестовые чанки данных."""
+    for chunk in chunks:
+        yield chunk
+
+
 # ---------- ТЕСТЫ ДЛЯ BookRepository ----------
 
 class TestBookRepository:
@@ -46,14 +52,20 @@ class TestBookRepository:
         assert created.format == "pdf"
         assert created.cover_size == len(cover_bytes)
         assert created.file_size == len(file_bytes)
+        assert created.cover_chunks_count == 1
+        assert created.file_chunks_count == 1
 
         fetched = await book_repo.get_by_id(created.id)
         assert fetched is not None
         assert fetched.id == created.id
         assert fetched.cover_size == len(cover_bytes)
         assert fetched.file_size == len(file_bytes)
+        assert fetched.cover_chunks_count == 1
+        assert fetched.file_chunks_count == 1
         assert await book_repo.get_cover_bytes(created.id) == cover_bytes
         assert await book_repo.get_file_bytes(created.id) == file_bytes
+        assert await book_repo.validate_cover_integrity(created.id) is True
+        assert await book_repo.validate_file_integrity(created.id) is True
 
     async def test_get_by_author_and_series(self, book_repo: BookRepository):
         # создаём несколько книг разных авторов и серий
@@ -219,6 +231,40 @@ class TestBookRepository:
         assert [book.title for book in asc_books] == ["Older", "Newer"]
         assert [book.title for book in desc_books] == ["Newer", "Older"]
 
+    async def test_list_books_supports_created_at_cursor(
+        self,
+        book_repo: BookRepository,
+        repository_session,
+    ):
+        """Проверяет keyset-пагинацию списка книг."""
+        from datetime import datetime, timedelta
+
+        books = []
+        for index, title in enumerate(["Oldest", "Middle", "Newest"]):
+            book = await book_repo.create_book(
+                BookCreate(
+                    cover=None,
+                    title=title,
+                    author=None,
+                    description=None,
+                    series=None,
+                    format="epub",
+                    file=None,
+                )
+            )
+            book.created_at = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(days=index)
+            books.append(book)
+        await repository_session.flush()
+
+        page = await book_repo.list_books(
+            sort_by="created_at",
+            sort_dir="desc",
+            cursor_created_at=books[2].created_at,
+            cursor_id=books[2].id,
+        )
+
+        assert [book.title for book in page] == ["Middle", "Oldest"]
+
     async def test_list_books_sorts_by_user_progress(
         self,
         book_repo: BookRepository,
@@ -226,7 +272,7 @@ class TestBookRepository:
     ):
         """Проверяет сортировку по прогрессу пользователя."""
         from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
-        from api_manager_books.db.Repository.LogRepository.ORM import LogEntry
+        from api_manager_books.db.Repository.ReadingProgressRepository.ORM import ReadingProgress
         from api_manager_books.db.Repository.UserRepository.ORM import User
         from api_manager_books.schemas.enums import UserRole
 
@@ -274,53 +320,40 @@ class TestBookRepository:
 
         repository_session.add_all(
             [
-                LogEntry(
+                ReadingProgress(
                     user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["Low Progress"][0].id,
+                    book_id=books["Low Progress"].id,
+                    chapter_id=chapters_by_title["Low Progress"][0].id,
                 ),
-                LogEntry(
+                ReadingProgress(
                     user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["Mid Progress"][0].id,
+                    book_id=books["Mid Progress"].id,
+                    chapter_id=chapters_by_title["Mid Progress"][0].id,
                 ),
-                LogEntry(
+                ReadingProgress(
                     user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["Mid Progress"][1].id,
+                    book_id=books["Mid Progress"].id,
+                    chapter_id=chapters_by_title["Mid Progress"][1].id,
                 ),
-                LogEntry(
+                ReadingProgress(
                     user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["High Progress"][0].id,
+                    book_id=books["High Progress"].id,
+                    chapter_id=chapters_by_title["High Progress"][0].id,
                 ),
-                LogEntry(
+                ReadingProgress(
                     user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["High Progress"][1].id,
+                    book_id=books["High Progress"].id,
+                    chapter_id=chapters_by_title["High Progress"][1].id,
                 ),
-                LogEntry(
+                ReadingProgress(
                     user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["High Progress"][2].id,
+                    book_id=books["High Progress"].id,
+                    chapter_id=chapters_by_title["High Progress"][2].id,
                 ),
-                LogEntry(
-                    user_id=user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["High Progress"][2].id,
-                ),
-                LogEntry(
+                ReadingProgress(
                     user_id=other_user.id,
-                    action="get_chapter",
-                    entity="book_chapters",
-                    entity_id=chapters_by_title["Low Progress"][1].id,
+                    book_id=books["Low Progress"].id,
+                    chapter_id=chapters_by_title["Low Progress"][1].id,
                 ),
             ]
         )
@@ -465,11 +498,6 @@ class TestBookRepository:
             )
         )
 
-        async def iter_chunks(*chunks: bytes):
-            """Итерирует тестовые чанки данных."""
-            for chunk in chunks:
-                yield chunk
-
         updated = await book_repo.update_book(
             book.id,
             BookUpdate(
@@ -483,8 +511,34 @@ class TestBookRepository:
 
         assert updated.cover_size == len(b"new-cover")
         assert updated.cover_mime == "image/webp"
+        assert updated.cover_chunks_count == 2
         assert updated.file_size == len(b"chunked-file")
+        assert updated.file_chunks_count == 3
         assert updated.file_name == "chunked.epub"
         assert updated.file_mime == "application/epub+zip"
         assert await book_repo.get_cover_bytes(book.id) == b"new-cover"
         assert await book_repo.get_file_bytes(book.id) == b"chunked-file"
+
+    async def test_validate_book_binary_integrity_rejects_wrong_size(
+        self,
+        book_repo: BookRepository,
+        repository_session,
+    ):
+        """Проверяет контроль целостности чанков книги."""
+        book = await book_repo.create_book(
+            BookCreate(
+                cover=None,
+                title="Integrity",
+                author=None,
+                description=None,
+                series=None,
+                format="epub",
+                file=None,
+            ),
+            file_chunks=iter_chunks(b"file-", b"bytes"),
+        )
+
+        book.file_size = 999
+        await repository_session.flush()
+
+        assert await book_repo.validate_file_integrity(book.id) is False

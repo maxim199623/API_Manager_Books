@@ -1,8 +1,9 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Protocol
 
 from api_manager_books.config.config import AppSettings, normalize_sqlite_path
+from api_manager_books.db.migrations import run_migrations
 from api_manager_books.schemas.api import SettingsResponse, SettingsUpdate
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
@@ -10,8 +11,9 @@ from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings,
 class DBManager(Protocol):
     """Менеджер базы данных."""
 
-    async def create_schema(self) -> None:
-        """Создает схему базы данных."""
+    @property
+    def database_url(self) -> str:
+        """URL подключения к БД."""
         ...
 
     async def migrate_to(self, target: "DBManager") -> None:
@@ -59,10 +61,12 @@ class SettingsService:
         self,
         settings_manager: SettingsStore,
         db_manager_factory: Callable[[DatabaseSettings], DBManager],
+        schema_migrator: Callable[[str], Awaitable[None]] = run_migrations,
     ):
         """Инициализирует зависимости сервиса настроек."""
         self._settings_manager = settings_manager
         self._db_manager_factory = db_manager_factory
+        self._schema_migrator = schema_migrator
 
     def get_current_settings(self) -> SettingsResponse:
         """Возвращает текущие настройки для ответа API."""
@@ -87,7 +91,7 @@ class SettingsService:
         new_db_manager = self._db_manager_factory(draft_settings.database)
 
         try:
-            await new_db_manager.create_schema()
+            await self._schema_migrator(new_db_manager.database_url)
             if old_backend != new_backend:
                 try:
                     await current_db_manager.migrate_to(new_db_manager)

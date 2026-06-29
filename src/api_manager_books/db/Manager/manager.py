@@ -2,7 +2,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from sqlalchemy import event, select, text
-from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -59,6 +58,11 @@ class AsyncDBManager:
         """Фабрика асинхронных сессий."""
         return self._session_factory
 
+    @property
+    def database_url(self) -> str:
+        """URL подключения к БД."""
+        return self._settings.get_url
+
 
     @asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
@@ -79,44 +83,6 @@ class AsyncDBManager:
         finally:
             await session.close()
 
-    async def create_schema(self) -> None:
-        """
-        Создать все таблицы, описанные в ORM-моделях (Base.metadata).
-        """
-        async with self._engine.begin() as conn:
-            await conn.run_sync(self._base.metadata.create_all)
-
-    async def upgrade_schema(self) -> None:
-        """Добавить совместимые nullable-колонки без Alembic."""
-        async with self._engine.begin() as conn:
-            tables = await conn.run_sync(
-                lambda sync_conn: sa_inspect(sync_conn).get_table_names()
-            )
-            if "users" not in tables:
-                return
-
-            columns = await conn.run_sync(
-                lambda sync_conn: {
-                    column["name"]
-                    for column in sa_inspect(sync_conn).get_columns("users")
-                }
-            )
-            dialect = conn.dialect.name
-            column_types = {
-                "refresh_token_hash": "BYTEA" if dialect == "postgresql" else "BLOB",
-                "refresh_token_expires_at": (
-                    "TIMESTAMP WITH TIME ZONE"
-                    if dialect == "postgresql"
-                    else "DATETIME"
-                ),
-            }
-
-            for column_name, column_type in column_types.items():
-                if column_name not in columns:
-                    await conn.execute(
-                        text(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
-                    )
-
     async def drop_schema(self) -> None:
         """
         Удалить все таблицы.
@@ -124,12 +90,7 @@ class AsyncDBManager:
         """
         async with self._engine.begin() as conn:
             await conn.run_sync(self._base.metadata.drop_all)
-
-    async def recreate_schema(self) -> None:
-        """Полностью пересоздать схему (drop + create)."""
-        async with self._engine.begin() as conn:
-            await conn.run_sync(self._base.metadata.drop_all)
-            await conn.run_sync(self._base.metadata.create_all)
+            await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
     async def ping(self) -> bool:
         """

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, LargeBinary, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api_manager_books.db.base import Base
@@ -81,6 +81,14 @@ class Book(Base):
         server_default="0",
     )
 
+    cover_chunks_count: Mapped[int] = mapped_column(
+        "cover_chunks_count",
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
     file_name: Mapped[str | None] = mapped_column(
         "file_name",
         String(255),
@@ -95,6 +103,14 @@ class Book(Base):
 
     file_size: Mapped[int] = mapped_column(
         "file_size",
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
+    file_chunks_count: Mapped[int] = mapped_column(
+        "file_chunks_count",
         Integer,
         nullable=False,
         default=0,
@@ -128,6 +144,12 @@ class Book(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="BookFileChunk.chunk_index",
+    )
+
+    __table_args__ = (
+        Index("ix_books_created_at_id", "created_at", "id"),
+        Index("ix_books_author_created_at_id", "author", "created_at", "id"),
+        Index("ix_books_series_created_at_id", "series", "created_at", "id"),
     )
 
 

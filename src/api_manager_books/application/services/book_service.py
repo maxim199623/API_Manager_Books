@@ -1,5 +1,6 @@
 import uuid
 from collections.abc import AsyncIterable, Sequence
+from datetime import datetime
 from typing import Any, Literal, Protocol
 
 from api_manager_books.schemas.books import (
@@ -49,6 +50,8 @@ class BookStorage(Protocol):
         sort_by: BookSortField = "created_at",
         sort_dir: SortDirection = "desc",
         user_id: uuid.UUID,
+        cursor_created_at: datetime | None = None,
+        cursor_id: uuid.UUID | None = None,
     ) -> Sequence[BookRecord]:
         """Возвращает список книг по фильтрам."""
         ...
@@ -175,8 +178,16 @@ class BookService:
         limit: int = 100,
         sort_by: BookSortField = "created_at",
         sort_dir: SortDirection = "desc",
+        cursor_created_at: datetime | None = None,
+        cursor_id: uuid.UUID | None = None,
     ) -> list[BookListRead]:
         """Получить книги с признаком избранного для пользователя."""
+        cursor_kwargs = {}
+        if cursor_created_at is not None and cursor_id is not None:
+            cursor_kwargs = {
+                "cursor_created_at": cursor_created_at,
+                "cursor_id": cursor_id,
+            }
         books: Sequence[object] = await self._book_repo.list_books(
             author=author,
             series=series,
@@ -185,6 +196,7 @@ class BookService:
             sort_by=sort_by,
             sort_dir=sort_dir,
             user_id=user_id,
+            **cursor_kwargs,
         )
         if not books:
             return []

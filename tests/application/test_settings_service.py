@@ -50,13 +50,13 @@ class FakeDBManager:
         """Инициализирует тестовый объект."""
         self.backend = backend
         self.migrate_error = migrate_error
-        self.schema_created = False
         self.migrated_to: list[FakeDBManager] = []
         self.disposed = False
 
-    async def create_schema(self) -> None:
-        """Имитирует создание схемы базы данных."""
-        self.schema_created = True
+    @property
+    def database_url(self) -> str:
+        """Возвращает тестовый URL базы данных."""
+        return f"{self.backend}://test"
 
     async def migrate_to(self, new_manager: "FakeDBManager") -> None:
         """Имитирует миграцию в новый менеджер базы данных."""
@@ -82,6 +82,18 @@ class FakeDBManagerFactory:
         return manager
 
 
+class FakeSchemaMigrator:
+    """Тестовый применитель миграций."""
+
+    def __init__(self):
+        """Инициализирует тестовый объект."""
+        self.urls: list[str] = []
+
+    async def __call__(self, database_url: str) -> None:
+        """Запоминает URL миграции."""
+        self.urls.append(database_url)
+
+
 def make_settings(*, backend: str = "sqlite", echo: bool = False) -> AppSettings:
     """Создает тестовые настройки приложения."""
     return AppSettings(
@@ -103,11 +115,13 @@ def make_settings(*, backend: str = "sqlite", echo: bool = False) -> AppSettings
 def make_service(
     settings_manager: FakeSettingsManager,
     factory: FakeDBManagerFactory | None = None,
+    migrator: FakeSchemaMigrator | None = None,
 ) -> SettingsService:
     """Создает сервис с тестовыми зависимостями."""
     return SettingsService(
         settings_manager=settings_manager,
         db_manager_factory=factory or FakeDBManagerFactory(),
+        schema_migrator=migrator or FakeSchemaMigrator(),
     )
 
 
@@ -140,11 +154,12 @@ def test_get_current_settings_omits_sqlite_path_when_backend_is_postgres():
 
 
 @pytest.mark.asyncio
-async def test_update_without_backend_change_creates_schema_skips_migration_and_saves():
+async def test_update_without_backend_change_applies_migrations_skips_data_migration_and_saves():
     """Проверяет обновление без миграции при том же backend."""
     settings_manager = FakeSettingsManager(make_settings())
     factory = FakeDBManagerFactory()
-    service = make_service(settings_manager, factory)
+    migrator = FakeSchemaMigrator()
+    service = make_service(settings_manager, factory, migrator)
     old_db_manager = FakeDBManager("sqlite")
 
     result = await service.update_settings(
@@ -154,7 +169,7 @@ async def test_update_without_backend_change_creates_schema_skips_migration_and_
 
     assert len(factory.created) == 1
     new_db_manager = factory.created[0]
-    assert new_db_manager.schema_created is True
+    assert migrator.urls == [new_db_manager.database_url]
     assert old_db_manager.migrated_to == []
     assert settings_manager.saved == 1
     assert settings_manager.db.backend == "sqlite"
@@ -225,7 +240,8 @@ async def test_update_with_backend_change_migrates_old_manager_to_new_manager():
     """Проверяет миграцию при смене backend."""
     settings_manager = FakeSettingsManager(make_settings(backend="sqlite"))
     factory = FakeDBManagerFactory()
-    service = make_service(settings_manager, factory)
+    migrator = FakeSchemaMigrator()
+    service = make_service(settings_manager, factory, migrator)
     old_db_manager = FakeDBManager("sqlite")
 
     result = await service.update_settings(
@@ -234,6 +250,7 @@ async def test_update_with_backend_change_migrates_old_manager_to_new_manager():
     )
 
     new_db_manager = factory.created[0]
+    assert migrator.urls == [new_db_manager.database_url]
     assert old_db_manager.migrated_to == [new_db_manager]
     assert settings_manager.saved == 1
     assert settings_manager.db.backend == "postgres"
@@ -256,7 +273,6 @@ async def test_update_disposes_new_manager_and_keeps_settings_atomic_when_migrat
         )
 
     new_db_manager = factory.created[0]
-    assert new_db_manager.schema_created is True
     assert new_db_manager.disposed is True
     assert settings_manager.saved == 0
     assert settings_manager.applied_settings == []

@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -16,20 +18,35 @@ async def get_read_chapters(
     book_id: uuid.UUID | None = Query(None, description="Фильтр по книге"),
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cursor_read_at: Annotated[
+        datetime | None,
+        Query(description="Keyset-курсор read_at"),
+    ] = None,
+    cursor_chapter_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Keyset-курсор chapter_id"),
+    ] = None,
     current_user: UserRead = Depends(require_auth),
     reading_history_service: ReadingHistoryService = Depends(get_reading_history_service),
 ):
     """
     Список прочитанных (запрошенных) глав:
     - всех (если book_id не указан)
-    - конкретной книги (если указан book_id)
+        - конкретной книги (если указан book_id)
     """
 
+    cursor_kwargs = {}
+    if cursor_read_at is not None and cursor_chapter_id is not None:
+        cursor_kwargs = {
+            "cursor_read_at": cursor_read_at,
+            "cursor_chapter_id": cursor_chapter_id,
+        }
     return await reading_history_service.list_read_chapters(
         user_id=current_user.id,
         book_id=book_id,
         offset=offset,
         limit=limit,
+        **cursor_kwargs,
     )
 
 

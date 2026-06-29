@@ -1,14 +1,15 @@
 import uuid
 from collections.abc import AsyncIterable, AsyncIterator, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import case, delete, func, select
+from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_manager_books.db.Repository.BookChapterRepository.ORM import BookChapter
 from api_manager_books.db.Repository.BookRepository.ORM import Book, BookCoverChunk, BookFileChunk
-from api_manager_books.db.Repository.LogRepository.ORM import LogEntry
+from api_manager_books.db.Repository.ReadingProgressRepository.ORM import ReadingProgress
 from api_manager_books.db.Repository.utils import build_model_from_schema, patch_model_from_schema
 from api_manager_books.schemas.books import BookCreate, BookUpdate
 
@@ -30,6 +31,14 @@ class BookBinaryMeta:
     content_type: str | None
     file_name: str | None
     size: int
+
+
+@dataclass(frozen=True)
+class BookChunkStats:
+    """Статистика сохраненных чанков книги."""
+
+    size: int
+    chunks_count: int
 
 
 class BookRepository:
@@ -107,6 +116,8 @@ class BookRepository:
         sort_by: BookSortField = "created_at",
         sort_dir: SortDirection = "desc",
         user_id: uuid.UUID | None = None,
+        cursor_created_at: datetime | None = None,
+        cursor_id: uuid.UUID | None = None,
     ) -> Sequence[Book]:
         """
         Общий метод выборки книг с фильтрами по автору и серии.
@@ -133,16 +144,13 @@ class BookRepository:
             )
             read_count = (
                 select(
-                    BookChapter.book_id.label("book_id"),
-                    func.count(func.distinct(LogEntry.entity_id)).label("read_count"),
+                    ReadingProgress.book_id.label("book_id"),
+                    func.count().label("read_count"),
                 )
-                .join(LogEntry, LogEntry.entity_id == BookChapter.id)
                 .where(
-                    LogEntry.user_id == user_id,
-                    LogEntry.action == "get_chapter",
-                    LogEntry.entity == "book_chapters",
+                    ReadingProgress.user_id == user_id,
                 )
-                .group_by(BookChapter.book_id)
+                .group_by(ReadingProgress.book_id)
                 .subquery()
             )
 
@@ -162,6 +170,21 @@ class BookRepository:
                 "title": Book.title,
             }
             sort_expression = sort_columns[sort_by]
+            if sort_by == "created_at" and cursor_created_at is not None and cursor_id is not None:
+                if sort_dir == "desc":
+                    stmt = stmt.where(
+                        or_(
+                            Book.created_at < cursor_created_at,
+                            (Book.created_at == cursor_created_at) & (Book.id > cursor_id),
+                        )
+                    )
+                else:
+                    stmt = stmt.where(
+                        or_(
+                            Book.created_at > cursor_created_at,
+                            (Book.created_at == cursor_created_at) & (Book.id > cursor_id),
+                        )
+                    )
 
         ordered_expression = (
             sort_expression.desc()
@@ -307,6 +330,24 @@ class BookRepository:
         async for chunk in result:
             yield chunk
 
+    async def validate_cover_integrity(self, book_id: uuid.UUID) -> bool:
+        """Проверить целостность чанков обложки."""
+        return await self._validate_binary_integrity(
+            book_id,
+            chunk_model=BookCoverChunk,
+            expected_size_attr="cover_size",
+            expected_chunks_count_attr="cover_chunks_count",
+        )
+
+    async def validate_file_integrity(self, book_id: uuid.UUID) -> bool:
+        """Проверить целостность чанков файла книги."""
+        return await self._validate_binary_integrity(
+            book_id,
+            chunk_model=BookFileChunk,
+            expected_size_attr="file_size",
+            expected_chunks_count_attr="file_chunks_count",
+        )
+
     async def _replace_cover(
         self,
         book: Book,
@@ -318,18 +359,19 @@ class BookRepository:
     ) -> None:
         """Заменить чанки обложки книги."""
         await self._delete_chunks(BookCoverChunk, book.id)
-        size = await self._store_chunks(
+        stats = await self._store_chunks(
             BookCoverChunk,
             book.id,
             payload=payload,
             chunks=chunks,
         )
-        if size > 0:
+        if stats.size > 0:
             if content_type is not None:
                 book.cover_mime = content_type
         else:
             book.cover_mime = book.cover_mime if preserve_meta else None
-        book.cover_size = size
+        book.cover_size = stats.size
+        book.cover_chunks_count = stats.chunks_count
 
     async def _replace_file(
         self,
@@ -343,13 +385,13 @@ class BookRepository:
     ) -> None:
         """Заменить чанки файла книги."""
         await self._delete_chunks(BookFileChunk, book.id)
-        size = await self._store_chunks(
+        stats = await self._store_chunks(
             BookFileChunk,
             book.id,
             payload=payload,
             chunks=chunks,
         )
-        if size > 0:
+        if stats.size > 0:
             if content_type is not None:
                 book.file_mime = content_type
             if file_name is not None:
@@ -358,7 +400,8 @@ class BookRepository:
             if not preserve_meta:
                 book.file_mime = None
                 book.file_name = None
-        book.file_size = size
+        book.file_size = stats.size
+        book.file_chunks_count = stats.chunks_count
 
     async def _delete_chunks(self, chunk_model, book_id: uuid.UUID) -> None:
         """Удалить чанки книги."""
@@ -372,10 +415,10 @@ class BookRepository:
         *,
         payload: bytes | None,
         chunks: AsyncIterable[bytes] | None,
-    ) -> int:
+    ) -> BookChunkStats:
         """Сохранить чанки книги."""
         if chunks is None and payload is None:
-            return 0
+            return BookChunkStats(size=0, chunks_count=0)
 
         total_size = 0
         chunk_index = 0
@@ -392,7 +435,45 @@ class BookRepository:
             chunk_index += 1
 
         await self._session.flush()
-        return total_size
+        return BookChunkStats(size=total_size, chunks_count=chunk_index)
+
+    async def _validate_binary_integrity(
+        self,
+        book_id: uuid.UUID,
+        *,
+        chunk_model,
+        expected_size_attr: str,
+        expected_chunks_count_attr: str,
+    ) -> bool:
+        """Проверить метаданные чанков книги без чтения данных в память."""
+        book = await self.get_by_id(book_id)
+        if book is None:
+            return False
+
+        expected_size = getattr(book, expected_size_attr)
+        expected_chunks_count = getattr(book, expected_chunks_count_attr)
+
+        stmt = (
+            select(
+                func.count(chunk_model.chunk_index),
+                func.coalesce(func.sum(func.length(chunk_model.data)), 0),
+                func.min(chunk_model.chunk_index),
+                func.max(chunk_model.chunk_index),
+            )
+            .where(chunk_model.book_id == book_id)
+        )
+        result = await self._session.execute(stmt)
+        actual_chunks_count, actual_size, min_index, max_index = result.one()
+
+        if expected_chunks_count == 0:
+            return actual_chunks_count == 0 and expected_size == 0
+
+        return (
+            expected_chunks_count == actual_chunks_count
+            and expected_size == actual_size
+            and min_index == 0
+            and max_index == expected_chunks_count - 1
+        )
 
     async def _iter_input_chunks(
         self,
