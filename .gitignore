@@ -270,6 +270,7 @@ cython_debug/
 /Тест/
 
 # Runtime files
+/var/security/
 /var/*
 !/var/.gitkeep
 /artifacts/*

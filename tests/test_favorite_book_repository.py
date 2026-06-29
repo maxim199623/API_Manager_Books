@@ -44,7 +44,7 @@ class TestFavoriteBookRepository:
         user = await user_repo.create_user(
             UserCreate(
                 email="favorite-user@example.com",
-                password="secret123",
+                password="secret123-long",
                 role=UserRole.USER,
             )
         )
@@ -153,7 +153,7 @@ class TestFavoriteBookRepository:
         user = await user_repo.create_user(
             UserCreate(
                 email="subset-user@example.com",
-                password="secret123",
+                password="secret123-long",
                 role=UserRole.USER,
             )
         )
@@ -213,7 +213,7 @@ class TestFavoriteBookRepository:
         user = await user_repo.create_user(
             UserCreate(
                 email="remove-user@example.com",
-                password="secret123",
+                password="secret123-long",
                 role=UserRole.USER,
             )
         )
@@ -249,7 +249,7 @@ class TestFavoriteBookRepository:
         user = await user_repo.create_user(
             UserCreate(
                 email="cascade-book-user@example.com",
-                password="secret123",
+                password="secret123-long",
                 role=UserRole.USER,
             )
         )
@@ -282,7 +282,7 @@ class TestFavoriteBookRepository:
         user = await user_repo.create_user(
             UserCreate(
                 email="cascade-user@example.com",
-                password="secret123",
+                password="secret123-long",
                 role=UserRole.USER,
             )
         )
@@ -315,7 +315,7 @@ class TestFavoriteBookRepository:
         other_user = await user_repo.create_user(
             UserCreate(
                 email="other-user@example.com",
-                password="secret123",
+                password="secret123-long",
                 role=UserRole.USER,
             )
         )
