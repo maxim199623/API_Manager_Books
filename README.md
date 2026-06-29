@@ -44,40 +44,86 @@ path = var/app.db
 
 ## Запуск
 
-Локальный dev-запуск:
+Production-скрипты хранятся в Git и запускают приложение через Poetry entrypoint `api-manager-books`.
+Перед production-запуском нужны реальные TLS-файлы и `APP_ENV=prod`.
+
+Создайте локальные env-шаблоны без реальных секретов:
 
 ```powershell
-$env:APP_ENV = "dev"
-$env:APP_HOST = "127.0.0.1"
-poetry run api-manager-books
+.\scripts\init-env.ps1
 ```
 
-Сервер запускается с HTTPS на порту `1408`:
+Для Linux/macOS:
+
+```sh
+sh ./scripts/init-env.sh
+```
+
+Скрипты создают `.env.prod.local` и `.env.dev.local`, если файлов еще нет. Эти файлы игнорируются Git.
+Чтобы перезаписать шаблоны, используйте `-Force` в PowerShell или `--force` в shell.
+
+Минимальный `.env.prod.local` для запуска приложения:
+
+```ini
+APP_ENV=prod
+APP_HOST=0.0.0.0
+APP_PORT=1408
+TLS_CERT_FILE=C:\path\to\fullchain.pem
+TLS_KEY_FILE=C:\path\to\privkey.pem
+INITIAL_ADMIN_EMAIL=
+INITIAL_ADMIN_PASSWORD=
+```
+
+На Linux/macOS значения с пробелами нужно экранировать или заключать в кавычки по правилам shell.
+
+Production-запуск в CMD:
+
+```cmd
+start.bat
+```
+
+Production-запуск в PowerShell:
+
+```powershell
+.\start.ps1
+```
+
+Production-запуск в Linux/macOS:
+
+```sh
+sh ./start.sh
+```
+
+Сервер запускается с HTTPS на порту из `APP_PORT`, по умолчанию `1408`.
 
 ```text
 https://localhost:1408
 ```
 
-В dev-режиме приложение создает self-signed сертификат только для loopback bind `127.0.0.1` / `localhost`.
-Для сетевого bind и production нужны явные TLS-файлы:
+Для первого запуска с пустой таблицей пользователей нужно задать начального администратора в локальном env-файле или в окружении процесса:
 
-```powershell
-$env:APP_ENV = "prod"
-$env:APP_HOST = "0.0.0.0"
-$env:TLS_CERT_FILE = "C:\path\to\fullchain.pem"
-$env:TLS_KEY_FILE = "C:\path\to\privkey.pem"
-poetry run api-manager-books
-```
-
-При старте также создаются таблицы базы данных. Для первого запуска с пустой таблицей пользователей нужно явно задать начального администратора:
-
-```powershell
-$env:INITIAL_ADMIN_EMAIL = "admin@example.com"
-$env:INITIAL_ADMIN_PASSWORD = "change-this-long-password"
-poetry run api-manager-books
+```ini
+INITIAL_ADMIN_EMAIL=admin@example.com
+INITIAL_ADMIN_PASSWORD=change-this-long-password
 ```
 
 Если переменные не заданы или пароль слишком короткий, приложение не стартует.
+
+Dev-скрипты являются локальными файлами и не попадают в Git:
+
+```text
+start.dev.bat
+start.dev.ps1
+start.dev.sh
+```
+
+Они используют `.env.dev.local`, задают безопасный loopback-запуск `APP_ENV=dev`, `APP_HOST=127.0.0.1` и не требуют TLS-файлы. В dev-режиме приложение создает self-signed сертификат только для loopback bind `127.0.0.1` / `localhost`.
+
+Ручной запуск без скриптов:
+
+```powershell
+poetry run api-manager-books
+```
 
 ## Тесты
 
