@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
 
     # Создаём схемы (таблицы) один раз при старте
     await db_manager.create_schema()
+    await db_manager.upgrade_schema()
 
     # Пустая БД не должна стартовать с известными учетными данными.
     await create_initial_admin(db_manager)

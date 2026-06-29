@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 from api_manager_books.schemas.enums import UserRole
+from api_manager_books.security.password_policy import validate_password_strength
 
 
 class UserBase(BaseModel):
@@ -18,6 +19,12 @@ class UserCreate(UserBase):
 
     password: str
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, password: str) -> str:
+        """Проверяет минимальную надежность пароля."""
+        return validate_password_strength(password)
+
 
 class UserUpdate(BaseModel):
     """Данные для обновления пользователя."""
@@ -25,6 +32,14 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     role: UserRole | None = None
     password: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, password: str | None) -> str | None:
+        """Проверяет пароль, если он передан."""
+        if password is None:
+            return None
+        return validate_password_strength(password)
 
 
 class UserRead(UserBase):

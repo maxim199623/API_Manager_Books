@@ -44,20 +44,28 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         ) from err
-    user_id = payload.get("sub")
-    token_sid = uuid.UUID(payload.get("sid"))
-    if user_id is None or token_sid is None:
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    raw_user_id = payload.get("sub")
+    raw_sid = payload.get("sid")
+    if raw_user_id is None or raw_sid is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
 
     try:
-        user_id = uuid.UUID(payload["sub"])
+        user_id = uuid.UUID(raw_user_id)
+        token_sid = uuid.UUID(raw_sid)
     except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token subject",
+            detail="Invalid token payload",
         ) from err
 
     user = await user_repo.get_by_id(user_id)
@@ -90,6 +98,8 @@ async def get_current_user_from_ws(
 
     try:
         payload = decode_access_token(token)
+        if payload.get("type") != "access":
+            raise ValueError("invalid token type")
         user_id = uuid.UUID(payload["sub"])
         token_sid = uuid.UUID(payload.get("sid"))
     except (jwt.PyJWTError, ValueError, KeyError) as e:

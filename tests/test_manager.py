@@ -2,11 +2,12 @@ import inspect
 from pathlib import Path
 
 import pytest
-from sqlalchemy import Integer, String, select
+from sqlalchemy import Integer, String, select, text
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from api_manager_books.config.config import SettingsManager
+from api_manager_books.db.base import Base
 from api_manager_books.db.Manager import manager as manager_module
 from api_manager_books.db.Manager.manager import AsyncDBManager
 
@@ -216,3 +217,42 @@ class TestAsyncDBManager:
         finally:
             await source_manager.dispose()
             await target_manager.dispose()
+
+    @pytest.mark.asyncio
+    async def test_upgrade_schema_adds_refresh_columns_to_existing_users_table(
+        self,
+        settings_manager: SettingsManager,
+    ):
+        """Проверяет добавление nullable refresh-колонок без Alembic."""
+        db_manager = AsyncDBManager(settings_manager.db, Base)
+        try:
+            async with db_manager.engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        """
+                        CREATE TABLE users (
+                            id CHAR(32) PRIMARY KEY,
+                            email VARCHAR(255) NOT NULL UNIQUE,
+                            password_hash BLOB NOT NULL,
+                            role VARCHAR(20) NOT NULL,
+                            session CHAR(32),
+                            created_at DATETIME NOT NULL
+                        )
+                        """
+                    )
+                )
+
+            await db_manager.upgrade_schema()
+
+            async with db_manager.engine.begin() as conn:
+                columns = await conn.run_sync(
+                    lambda sync_conn: {
+                        column["name"]
+                        for column in sa_inspect(sync_conn).get_columns("users")
+                    }
+                )
+
+            assert "refresh_token_hash" in columns
+            assert "refresh_token_expires_at" in columns
+        finally:
+            await db_manager.dispose()

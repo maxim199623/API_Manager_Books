@@ -6,7 +6,7 @@ import jwt
 from api_manager_books.api.security.cert.jwt_keys import ensure_jwt_keys
 
 ALGORITHM = "RS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
 PRIVATE_KEY_PEM, PUBLIC_KEY_PEM = ensure_jwt_keys()
 

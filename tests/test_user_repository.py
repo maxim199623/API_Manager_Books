@@ -27,7 +27,7 @@ class TestUserRepository:
     """Проверяет репозиторий пользователей."""
     async def test_create_and_get_by_id(self, user_repo: UserRepository):
         """Проверяет создание и получение по ID."""
-        password = "pass-1"
+        password = "pass-1-long-ok"
         created = await user_repo.create_user(
             UserCreate(
                 email="user1@example.com",
@@ -53,7 +53,7 @@ class TestUserRepository:
         await user_repo.create_user(
             UserCreate(
                 email="user2@example.com",
-                password="pass-2",
+                password="pass-2-long-ok",
                 role=UserRole.ADMIN,
             )
         )
@@ -71,9 +71,9 @@ class TestUserRepository:
         # но в норме схема пустая после drop/create
         """Проверяет список пользователей."""
         users_data = [
-            UserCreate(email="u1@mail.com", password="pass-u1", role=UserRole.USER),
-            UserCreate(email="u2@mail.com", password="pass-u2", role=UserRole.ADMIN),
-            UserCreate(email="u3@mail.com", password="pass-u3", role=UserRole.USER),
+            UserCreate(email="u1@mail.com", password="pass-u1-long-ok", role=UserRole.USER),
+            UserCreate(email="u2@mail.com", password="pass-u2-long-ok", role=UserRole.ADMIN),
+            UserCreate(email="u3@mail.com", password="pass-u3-long-ok", role=UserRole.USER),
         ]
         for data in users_data:
             await user_repo.create_user(data)
@@ -87,7 +87,7 @@ class TestUserRepository:
         u = await user_repo.create_user(
             UserCreate(
                 email="todelete@mail.com",
-                password="pass-delete",
+                password="pass-delete-long",
                 role=UserRole.USER,
             )
         )
@@ -105,7 +105,7 @@ class TestUserRepository:
         u = await user_repo.create_user(
             UserCreate(
                 email="exists@mail.com",
-                password="pass-exists",
+                password="pass-exists-long",
                 role=UserRole.USER,
             )
         )
@@ -122,7 +122,7 @@ class TestUserRepository:
         await user_repo.create_user(
             UserCreate(
                 email="dup@mail.com",
-                password="pass-dup-1",
+                    password="pass-dup-1-long",
                 role=UserRole.USER,
             )
         )
@@ -131,14 +131,14 @@ class TestUserRepository:
             await user_repo.create_user(
                 UserCreate(
                     email="dup@mail.com",
-                    password="pass-dup-2",
+                    password="pass-dup-2-long",
                     role=UserRole.ADMIN,
                 )
             )
 
     async def test_update_user_email_role_password(self, user_repo: UserRepository):
         """Проверяет обновляет пользователя email роль пароль."""
-        old_password = "old-password"
+        old_password = "old-password-long"
         u = await user_repo.create_user(
             UserCreate(
                 email="old@mail.com",
@@ -147,7 +147,7 @@ class TestUserRepository:
             )
         )
 
-        new_password = "new-password"
+        new_password = "new-password-long"
 
         updated = await user_repo.update_user(
             u.id,
@@ -173,14 +173,14 @@ class TestUserRepository:
         await user_repo.create_user(
             UserCreate(
                 email="user_a@mail.com",
-                password="pass-a",
+                password="pass-a-long-ok",
                 role=UserRole.USER,
             )
         )
         u2 = await user_repo.create_user(
             UserCreate(
                 email="user_b@mail.com",
-                password="pass-b",
+                password="pass-b-long-ok",
                 role=UserRole.ADMIN,
             )
         )
@@ -190,3 +190,17 @@ class TestUserRepository:
                 u2.id,
                 email="user_a@mail.com",  # уже занят u1
             )
+
+    async def test_count_admins_returns_only_admin_users(self, user_repo: UserRepository):
+        """Проверяет подсчет пользователей с ролью администратора."""
+        users_data = [
+            UserCreate(email="admin1@mail.com", password="admin-1-long", role=UserRole.ADMIN),
+            UserCreate(email="admin2@mail.com", password="admin-2-long", role=UserRole.ADMIN),
+            UserCreate(email="user4@mail.com", password="user-4-long-ok", role=UserRole.USER),
+        ]
+        for data in users_data:
+            await user_repo.create_user(data)
+
+        count = await user_repo.count_admins()
+
+        assert count == 2
