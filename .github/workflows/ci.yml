@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,5 +18,49 @@ jobs:
         run: poetry install
       - name: Lint
         run: poetry run ruff check .
-      - name: Test
+
+  test-sqlite:
+    runs-on: ubuntu-latest
+    env:
+      API_MANAGER_BOOKS_REPOSITORY_BACKENDS: sqlite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Test SQLite
+        run: poetry run pytest tests -q
+
+  test-postgres:
+    runs-on: ubuntu-latest
+    env:
+      API_MANAGER_BOOKS_REPOSITORY_BACKENDS: postgres
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U admin -d test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Test PostgreSQL
         run: poetry run pytest tests -q

@@ -10,7 +10,6 @@ from api_manager_books.api.upload_policy import (
     iter_upload_chunks_with_policy,
 )
 
-
 PNG_BYTES = b"\x89PNG\r\n\x1a\npayload"
 PDF_BYTES = b"%PDF-1.7\npayload"
 EPUB_BYTES = b"PK\x03\x04payload"

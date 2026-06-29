@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -10,7 +11,36 @@ from api_manager_books.db.Manager.manager import AsyncDBManager
 from api_manager_books.db.migrations import run_migrations
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
-REPOSITORY_BACKENDS = ("sqlite", "postgres")
+
+def _repository_backends() -> tuple[str, ...]:
+    raw_value = os.getenv("API_MANAGER_BOOKS_REPOSITORY_BACKENDS")
+    if raw_value is None:
+        return ("sqlite", "postgres")
+
+    backends = tuple(item.strip().lower() for item in raw_value.split(",") if item.strip())
+    invalid_backends = sorted(set(backends) - {"sqlite", "postgres"})
+
+    if invalid_backends:
+        raise ValueError(
+            "API_MANAGER_BOOKS_REPOSITORY_BACKENDS supports only sqlite, postgres; "
+            f"got: {', '.join(invalid_backends)}"
+        )
+
+    if not backends:
+        raise ValueError("API_MANAGER_BOOKS_REPOSITORY_BACKENDS must not be empty")
+
+    return backends
+
+
+REPOSITORY_BACKENDS = _repository_backends()
+_UNAVAILABLE_REPOSITORY_BACKENDS: set[str] = set()
+
+
+def _handle_unavailable_repository_backend(backend: str) -> None:
+    if os.getenv("API_MANAGER_BOOKS_REPOSITORY_BACKENDS") is not None:
+        raise RuntimeError(f"{backend} is not available")
+
+    pytest.skip(f"{backend} is not available, skipping tests for this backend")
 
 
 def _repository_postgres_settings() -> PostgresSettings:
@@ -29,12 +59,16 @@ async def _managed_repository_db(
     backend: str,
 ) -> AsyncIterator[AsyncDBManager]:
     """Создает управляемую тестовую БД репозиториев."""
+    if backend in _UNAVAILABLE_REPOSITORY_BACKENDS:
+        _handle_unavailable_repository_backend(backend)
+
     db_manager = AsyncDBManager(settings, Base)
 
     ok = await db_manager.ping()
     if not ok:
         await db_manager.dispose()
-        pytest.skip(f"{backend} is not available, skipping tests for this backend")
+        _UNAVAILABLE_REPOSITORY_BACKENDS.add(backend)
+        _handle_unavailable_repository_backend(backend)
 
     await db_manager.drop_schema()
     await run_migrations(settings.get_url)

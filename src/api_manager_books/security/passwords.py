@@ -1,5 +1,5 @@
-import bcrypt
 import anyio
+import bcrypt
 
 BCRYPT_ROUNDS = 13
 
