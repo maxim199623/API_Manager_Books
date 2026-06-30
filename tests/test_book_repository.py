@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC
 
 import pytest
@@ -428,7 +429,7 @@ class TestBookRepository:
     async def test_ensure_exists_not_found(self, book_repo: BookRepository):
         """Проверяет ошибку при отсутствии записи."""
         with pytest.raises(BookNotFoundError):
-            await book_repo.ensure_exists(999999)
+            await book_repo.ensure_exists(uuid.uuid4())
 
     async def test_update_book_partial(self, book_repo: BookRepository):
         """Проверяет обновляет книгу partial."""

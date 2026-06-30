@@ -48,8 +48,8 @@ def _repository_postgres_settings() -> PostgresSettings:
     return PostgresSettings(
         host="localhost",
         port=5432,
-        user="admin",
-        password="admin",
+        user="postgres",
+        password="1408",
         name="test_db",
     )
 
@@ -96,8 +96,8 @@ def repository_settings_manager(
 
     manager.set_sqlite_path(str(tmp_path / "repository_tests.db"))
     manager.set_echo(False)
-    manager.postgres.user = "admin"
-    manager.postgres.password = "admin"
+    manager.postgres.user = "postgres"
+    manager.postgres.password = "1408"
     manager.postgres.name = "test_db"
     manager.save()
 

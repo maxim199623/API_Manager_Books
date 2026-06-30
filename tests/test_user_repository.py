@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 import pytest_asyncio
 
@@ -115,7 +117,7 @@ class TestUserRepository:
     async def test_ensure_exists_not_found(self, user_repo: UserRepository):
         """Проверяет ошибку при отсутствии записи."""
         with pytest.raises(UserNotFoundError):
-            await user_repo.ensure_exists(999999)
+            await user_repo.ensure_exists(uuid.uuid4())
 
     async def test_unique_email_violation(self, user_repo: UserRepository):
         """Проверяет нарушение уникальности email."""

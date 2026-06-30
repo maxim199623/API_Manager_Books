@@ -1,4 +1,5 @@
 import inspect
+import uuid
 
 import pytest
 import pytest_asyncio
@@ -220,10 +221,10 @@ class TestBookChapterRepository:
     ):
         """Проверяет ensure exists ошибки."""
         with pytest.raises(BookChapterNotFoundError):
-            await chapter_repo.ensure_exists_by_id(999999)
+            await chapter_repo.ensure_exists_by_id(uuid.uuid4())
 
         with pytest.raises(BookChapterNotFoundError):
-            await chapter_repo.ensure_exists_by_book_and_number(123, 1)
+            await chapter_repo.ensure_exists_by_book_and_number(uuid.uuid4(), 1)
 
     async def test_cascade_delete_when_book_deleted(
         self,
