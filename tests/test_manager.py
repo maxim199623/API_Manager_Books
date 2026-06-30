@@ -143,6 +143,19 @@ class TestAsyncDBManager:
         assert ok is True
 
     @pytest.mark.asyncio
+    async def test_sqlite_file_pragmas(self, async_db_manager: AsyncDBManager):
+        """Проверяет настройки SQLite для файловой базы."""
+        async with async_db_manager.engine.connect() as conn:
+            result = await conn.execute(text("PRAGMA foreign_keys"))
+            assert result.scalar_one() == 1
+
+            result = await conn.execute(text("PRAGMA busy_timeout"))
+            assert result.scalar_one() == 15000
+
+            result = await conn.execute(text("PRAGMA journal_mode"))
+            assert result.scalar_one().lower() == "wal"
+
+    @pytest.mark.asyncio
     async def test_dispose(self, async_db_manager: AsyncDBManager):
         """
         dispose() не падает и закрывает пул соединений.

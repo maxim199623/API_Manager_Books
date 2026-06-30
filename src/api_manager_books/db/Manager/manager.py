@@ -36,9 +36,12 @@ class AsyncDBManager:
         if self._engine.url.get_backend_name() == "sqlite":
             @event.listens_for(self._engine.sync_engine, "connect")
             def _set_sqlite_pragma(dbapi_conn, connection_record):
-                """Включить внешние ключи для SQLite."""
+                """Настроить SQLite для FK и ожидания блокировок."""
                 cursor = dbapi_conn.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.execute("PRAGMA busy_timeout=15000")
+                if self._engine.url.database not in {None, "", ":memory:"}:
+                    cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.close()
 
         # фабрика асинхронных сессий
@@ -52,11 +55,6 @@ class AsyncDBManager:
     def engine(self) -> AsyncEngine:
         """Асинхронный движок SQLAlchemy."""
         return self._engine
-
-    @property
-    def session_factory(self) -> async_sessionmaker[AsyncSession]:
-        """Фабрика асинхронных сессий."""
-        return self._session_factory
 
     @property
     def database_url(self) -> str:

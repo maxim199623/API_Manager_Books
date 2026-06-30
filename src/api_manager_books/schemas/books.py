@@ -1,8 +1,8 @@
 import uuid
-from base64 import b64decode, b64encode
+from base64 import b64decode
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class BookBase(BaseModel):
@@ -119,19 +119,3 @@ class BookMetadataUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class BookRead(BookBase):
-    """Полное представление книги."""
-
-    id: uuid.UUID
-    created_at: datetime
-    is_favorite: bool = False
-
-    model_config = ConfigDict(from_attributes=True)
-
-    # ---------- выход: bytes -> base64 ----------
-    @field_serializer("cover", "file")
-    def encode_base64(self, v: bytes | None):
-        """Кодирует бинарные поля в base64."""
-        if v is None:
-            return None
-        return b64encode(v).decode("ascii")

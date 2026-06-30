@@ -130,13 +130,6 @@ class UserRepository:
 
         return user
 
-    async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None):
-        """Установить идентификатор сессии пользователя."""
-        user = await self.ensure_exists(user_id)
-        user.session = session_id
-        await self._session.flush()
-        await self._session.refresh(user)
-
     async def set_auth_session(
         self,
         user_id: uuid.UUID,

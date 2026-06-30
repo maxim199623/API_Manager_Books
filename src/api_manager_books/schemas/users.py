@@ -51,11 +51,3 @@ class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserInDB(UserBase):
-    """Представление пользователя в базе."""
-
-    id: uuid.UUID
-    password_hash: bytes
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

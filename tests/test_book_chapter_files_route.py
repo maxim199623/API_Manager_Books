@@ -159,11 +159,18 @@ def get_route(path: str, method: str):
 
 
 def test_chapter_files_router_is_registered_in_main_router():
-    paths = {
-        (candidate.path, frozenset(getattr(candidate, "methods", set())))
+    router_is_included = any(
+        candidate.original_router is route.router
         for candidate in main_router.routes
+        if hasattr(candidate, "original_router")
+    )
+    paths = {
+        (candidate.path, frozenset(candidate.methods))
+        for candidate in route.router.routes
+        if hasattr(candidate, "path") and hasattr(candidate, "methods")
     }
 
+    assert router_is_included
     assert (
         "/books/{book_id}/chapters/{chapter_num}/files",
         frozenset({"GET"}),

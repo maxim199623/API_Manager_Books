@@ -210,17 +210,6 @@ class BookChapterRepository:
         await self._session.execute(stmt)
         return deleted_count
 
-    async def get_by_ids(self, ids: Sequence[uuid.UUID]) -> Sequence[BookChapter]:
-        """
-        Получить главы по списку их ID.
-        """
-        if not ids:
-            return []
-
-        stmt = select(BookChapter).where(BookChapter.id.in_(ids))
-        res = await self._session.execute(stmt)
-        return res.scalars().all()
-
     async def get_chapters_numbers_by_ids(self, ids: Sequence[uuid.UUID]) -> list[int]:
         """
         Получить список номеров глав (chapter) по списку ID.
