@@ -134,14 +134,6 @@ def _validate_signature(extension: str, policy: UploadPolicy, chunk: bytes) -> N
         raise _unsupported_file_type()
 
 
-def validate_upload_file(upload: UploadFile, kind: UploadKind) -> None:
-    """Проверяет метаданные файла до чтения тела запроса."""
-    extension = _extension(upload.filename)
-    policy = _policy_for(kind, extension)
-    _validate_mime(upload, policy)
-    _validate_content_length(upload, policy)
-
-
 async def iter_upload_chunks_with_policy(
     upload: UploadFile,
     kind: UploadKind,

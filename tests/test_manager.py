@@ -38,12 +38,10 @@ def settings_manager(config_path: Path, tmp_path: Path) -> SettingsManager:
     SettingsManager, который создаёт config.ini в tmp-дереве,
     и настраивает sqlite на временный файл.
     """
-    manager = SettingsManager(config_path)
+    manager = SettingsManager(config_path, base_dir=tmp_path)
 
-    # БД в tmp-директории, чтобы ничего не засорять
-    db_file = tmp_path / "test.db"
     manager.set_backend("sqlite")
-    manager.set_sqlite_path(str(db_file))
+    manager.set_sqlite_path(str(tmp_path / "var" / "test.db"))
     manager.set_echo(False)
     manager.save()
 
@@ -143,6 +141,19 @@ class TestAsyncDBManager:
         assert ok is True
 
     @pytest.mark.asyncio
+    async def test_sqlite_file_pragmas(self, async_db_manager: AsyncDBManager):
+        """Проверяет настройки SQLite для файловой базы."""
+        async with async_db_manager.engine.connect() as conn:
+            result = await conn.execute(text("PRAGMA foreign_keys"))
+            assert result.scalar_one() == 1
+
+            result = await conn.execute(text("PRAGMA busy_timeout"))
+            assert result.scalar_one() == 15000
+
+            result = await conn.execute(text("PRAGMA journal_mode"))
+            assert result.scalar_one().lower() == "wal"
+
+    @pytest.mark.asyncio
     async def test_dispose(self, async_db_manager: AsyncDBManager):
         """
         dispose() не падает и закрывает пул соединений.
@@ -170,9 +181,9 @@ class TestAsyncDBManager:
         """Проверяет перенос данных, когда строк больше одного батча."""
         source_manager = AsyncDBManager(settings_manager.db, BaseTestItem)
 
-        target_settings = SettingsManager(tmp_path / "target_config.ini")
+        target_settings = SettingsManager(tmp_path / "target_config.ini", base_dir=tmp_path)
         target_settings.set_backend("sqlite")
-        target_settings.set_sqlite_path(str(tmp_path / "target.db"))
+        target_settings.set_sqlite_path(str(tmp_path / "var" / "target.db"))
         target_settings.set_echo(False)
         target_settings.save()
         target_manager = AsyncDBManager(target_settings.db, BaseTestItem)

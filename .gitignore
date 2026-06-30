@@ -291,3 +291,4 @@ cython_debug/
 /app.db-journal
 /docs/database-improvement-plan.md
 /docs/dependabot-alerts-fix-plan.md
+/.tmp_config_debug_backup.ini

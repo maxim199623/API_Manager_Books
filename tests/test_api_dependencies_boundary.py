@@ -349,6 +349,41 @@ def test_user_service_does_not_import_concrete_repository_classes() -> None:
     assert offenders == []
 
 
+def test_get_session_depends_use_function_scope() -> None:
+    """Проверяет раннее закрытие DB-сессий в repository providers."""
+    project_root = Path(__file__).resolve().parents[1]
+    path = project_root / "src" / PACKAGE_ROOT / "api" / "dependencies.py"
+    offenders: list[str] = []
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+
+        if not isinstance(node.func, ast.Name) or node.func.id != "Depends":
+            continue
+
+        if not node.args:
+            continue
+
+        dependency = node.args[0]
+        if not isinstance(dependency, ast.Name) or dependency.id != "get_session":
+            continue
+
+        scope_keyword = next(
+            (keyword for keyword in node.keywords if keyword.arg == "scope"),
+            None,
+        )
+        if (
+            scope_keyword is None
+            or not isinstance(scope_keyword.value, ast.Constant)
+            or scope_keyword.value.value != "function"
+        ):
+            offenders.append(f"{path.relative_to(project_root)}:{node.lineno}")
+
+    assert offenders == []
+
+
 def test_settings_service_does_not_import_concrete_settings_infrastructure() -> None:
     """Проверяет отсутствие запрещенных импортов."""
     project_root = Path(__file__).resolve().parents[1]

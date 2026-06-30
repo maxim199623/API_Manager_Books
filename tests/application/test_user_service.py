@@ -49,10 +49,6 @@ class FakeUserRepo:
             created_at=datetime.now(UTC),
         )
 
-    async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None):
-        """Имитирует смену сессии пользователя."""
-        self.session_calls.append((user_id, session_id))
-
     async def set_auth_session(
         self,
         user_id: uuid.UUID,

@@ -1,6 +1,6 @@
 # API routes
 
-Краткая карта основных маршрутов API и форматов входных данных. Точные схемы ответов смотрите в Swagger UI после запуска сервиса:
+Краткая карта основных маршрутов API и форматов входных данных. Точные схемы запросов и ответов смотрите в Swagger UI/ReDoc, потому что они строятся из текущих Pydantic-схем проекта.
 
 ```text
 https://localhost:1408/docs
@@ -16,18 +16,24 @@ https://localhost:1408/redoc
 - Номер главы `chapter_num` передается в path-параметрах как `int`.
 - Поля со значением `null` допустимы только там, где поле помечено как опциональное.
 
+Уровни доступа:
+
+- `public` - Bearer access token не требуется;
+- `user` - нужен `Authorization: Bearer <access_token>`;
+- `admin` - нужен пользователь с ролью `admin`.
+
 ## Пользователи
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `POST` | `/users/auth` | Авторизация и выдача пары access/refresh токенов | JSON: `email` (`EmailStr`, обязательно), `password` (`str`, обязательно) |
-| `POST` | `/users/refresh` | Обновление пары access/refresh токенов | JSON: `refresh_token` (`str`, обязательно) |
-| `DELETE` | `/users/logout` | Завершение текущей сессии | Тело запроса не требуется; нужен Bearer token |
-| `GET` | `/users/me` | Получение текущего пользователя | Тело запроса не требуется; нужен Bearer token |
-| `POST` | `/users/add_user` | Создание пользователя администратором | JSON: `email` (`EmailStr`, обязательно), `password` (`str`, обязательно), `role` (`"admin"` или `"user"`, по умолчанию `"user"`) |
-| `GET` | `/users/get_users` | Получение списка пользователей администратором | Тело запроса не требуется |
-| `PATCH` | `/users/{user_id}` | Частичное обновление пользователя администратором | Path: `user_id` (`UUID`). JSON: `email` (`EmailStr`, опционально), `password` (`str`, опционально), `role` (`"admin"` или `"user"`, опционально) |
-| `DELETE` | `/users/{user_id}` | Удаление пользователя администратором | Path: `user_id` (`UUID`); тело запроса не требуется |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `POST` | `/users/auth` | `public` | Авторизация и выдача пары access/refresh токенов | JSON: `email` (`EmailStr`, обязательно), `password` (`str`, обязательно) |
+| `POST` | `/users/refresh` | `public` | Обновление пары access/refresh токенов | JSON: `refresh_token` (`str`, обязательно) |
+| `DELETE` | `/users/logout` | `user` | Завершение текущей сессии | Тело запроса не требуется |
+| `GET` | `/users/me` | `user` | Получение текущего пользователя | Тело запроса не требуется |
+| `POST` | `/users/add_user` | `admin` | Создание пользователя администратором | JSON: `email` (`EmailStr`, обязательно), `password` (`str`, обязательно), `role` (`"admin"` или `"user"`, по умолчанию `"user"`) |
+| `GET` | `/users/get_users` | `admin` | Получение списка пользователей администратором | Тело запроса не требуется |
+| `PATCH` | `/users/{user_id}` | `admin` | Частичное обновление пользователя администратором | Path: `user_id` (`UUID`). JSON: `email` (`EmailStr`, опционально), `password` (`str`, опционально), `role` (`"admin"` или `"user"`, опционально) |
+| `DELETE` | `/users/{user_id}` | `admin` | Удаление пользователя администратором | Path: `user_id` (`UUID`); тело запроса не требуется |
 
 Пример авторизации:
 
@@ -40,12 +46,12 @@ https://localhost:1408/redoc
 
 ## Книги
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `POST` | `/books/add_book` | Создание книги с опциональной обложкой и файлом | `multipart/form-data`: `title` (`str`, обязательно), `author` (`str`, опционально), `description` (`str`, опционально), `series` (`str`, опционально), `genres` (`str`, опционально), `format` (`str`, опционально), `cover` (`file`, опционально), `file` (`file`, опционально) |
-| `GET` | `/books/` | Получение списка книг с фильтрацией, сортировкой и пагинацией | Query: `author` (`str`, опционально), `series` (`str`, опционально), `offset` (`int >= 0`, по умолчанию `0`), `limit` (`1..1000`, по умолчанию `100`), `sort_by` (`"created_at"`, `"progress"` или `"title"`, по умолчанию `"created_at"`), `sort_dir` (`"asc"` или `"desc"`, по умолчанию `"desc"`) |
-| `PATCH` | `/books/{book_id}` | Частичное обновление метаданных книги | Path: `book_id` (`UUID`). JSON: `title`, `author`, `description`, `series`, `genres`, `format` (`str`, все поля опциональны). Лишние поля запрещены |
-| `DELETE` | `/books/{book_id}` | Удаление книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `POST` | `/books/add_book` | `admin` | Создание книги с опциональной обложкой и файлом | `multipart/form-data`: `title` (`str`, обязательно), `author` (`str`, опционально), `description` (`str`, опционально), `series` (`str`, опционально), `genres` (`str`, опционально), `format` (`str`, опционально), `cover` (`file`, опционально), `file` (`file`, опционально) |
+| `GET` | `/books/` | `user` | Получение списка книг с фильтрацией, сортировкой и пагинацией | Query: `author` (`str`, опционально), `series` (`str`, опционально), `offset` (`int >= 0`, по умолчанию `0`), `limit` (`1..1000`, по умолчанию `100`), `sort_by` (`"created_at"`, `"progress"` или `"title"`, по умолчанию `"created_at"`), `sort_dir` (`"asc"` или `"desc"`, по умолчанию `"desc"`) |
+| `PATCH` | `/books/{book_id}` | `admin` | Частичное обновление метаданных книги | Path: `book_id` (`UUID`). JSON: `title`, `author`, `description`, `series`, `genres`, `format` (`str`, все поля опциональны). Лишние поля запрещены |
+| `DELETE` | `/books/{book_id}` | `admin` | Удаление книги | Path: `book_id` (`UUID`); тело запроса не требуется |
 
 Пример `PATCH /books/{book_id}`:
 
@@ -59,12 +65,12 @@ https://localhost:1408/redoc
 
 ## Файлы книг
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `GET` | `/books/{book_id}/cover` | Получение обложки книги | Path: `book_id` (`UUID`); тело запроса не требуется |
-| `PUT` | `/books/{book_id}/cover` | Обновление обложки книги | Path: `book_id` (`UUID`). `multipart/form-data`: `cover` (`file`, обязательно) |
-| `GET` | `/books/{book_id}/file` | Скачивание файла книги | Path: `book_id` (`UUID`); тело запроса не требуется |
-| `PUT` | `/books/{book_id}/file` | Обновление файла книги | Path: `book_id` (`UUID`). `multipart/form-data`: `file` (`file`, обязательно) |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `GET` | `/books/{book_id}/cover` | `user` | Получение обложки книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| `PUT` | `/books/{book_id}/cover` | `admin` | Обновление обложки книги | Path: `book_id` (`UUID`). `multipart/form-data`: `cover` (`file`, обязательно) |
+| `GET` | `/books/{book_id}/file` | `user` | Скачивание файла книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| `PUT` | `/books/{book_id}/file` | `admin` | Обновление файла книги | Path: `book_id` (`UUID`). `multipart/form-data`: `file` (`file`, обязательно) |
 
 Ограничения загрузок:
 
@@ -80,13 +86,15 @@ https://localhost:1408/redoc
 
 ## Главы
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `POST` | `/books/{book_id}/chapters` | Добавление списка глав к книге | Path: `book_id` (`UUID`). JSON-массив объектов: `chapter` (`int`, обязательно), `chapter_name` (`str` или `null`, опционально), `description` (`str`, обязательно), `file` (`string` с OpenAPI `format: binary` или `null`, опционально) |
-| `GET` | `/books/{book_id}/chapters` | Получение списка глав книги | Path: `book_id` (`UUID`); тело запроса не требуется |
-| `GET` | `/books/{book_id}/chapters/count` | Получение количества глав книги | Path: `book_id` (`UUID`); тело запроса не требуется |
-| `GET` | `/books/{book_id}/chapters/{chapter_num}` | Получение конкретной главы | Path: `book_id` (`UUID`), `chapter_num` (`int`); тело запроса не требуется |
-| `PATCH` | `/books/{book_id}/chapters/{chapter_num}` | Частичное обновление главы | Path: `book_id` (`UUID`), `chapter_num` (`int`). JSON: `chapter_name` (`str` или `null`, опционально), `description` (`str` или `null`, опционально), `file` (`string` с OpenAPI `format: binary` или `null`, опционально) |
+Маршруты глав принимают JSON-данные главы. Файлы главы загружаются отдельными маршрутами из раздела “Файлы глав”.
+
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `POST` | `/books/{book_id}/chapters` | `admin` | Добавление списка глав к книге | Path: `book_id` (`UUID`). JSON-массив объектов: `chapter` (`int`, обязательно), `chapter_name` (`str` или `null`, опционально), `description` (`str`, обязательно) |
+| `GET` | `/books/{book_id}/chapters` | `user` | Получение списка глав книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| `GET` | `/books/{book_id}/chapters/count` | `user` | Получение количества глав книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| `GET` | `/books/{book_id}/chapters/{chapter_num}` | `user` | Получение конкретной главы | Path: `book_id` (`UUID`), `chapter_num` (`int`); тело запроса не требуется |
+| `PATCH` | `/books/{book_id}/chapters/{chapter_num}` | `admin` | Частичное обновление главы | Path: `book_id` (`UUID`), `chapter_num` (`int`). JSON: `chapter_name` (`str` или `null`, опционально), `description` (`str` или `null`, опционально) |
 
 Пример `POST /books/{book_id}/chapters`:
 
@@ -107,12 +115,12 @@ https://localhost:1408/redoc
 
 ## Файлы глав
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `GET` | `/books/{book_id}/chapters/{chapter_num}/files` | Получение списка файлов главы | Path: `book_id` (`UUID`), `chapter_num` (`int`). Query: `name` (`str`, опционально), `extension` (`str`, опционально), `offset` (`int`, по умолчанию `0`), `limit` (`int`, по умолчанию `100`) |
-| `POST` | `/books/{book_id}/chapters/{chapter_num}/files` | Загрузка файла главы | Path: `book_id` (`UUID`), `chapter_num` (`int`). `multipart/form-data`: `file` (`file`, обязательно) |
-| `GET` | `/books/{book_id}/chapters/{chapter_num}/files/{file_id}` | Скачивание файла главы | Path: `book_id` (`UUID`), `chapter_num` (`int`), `file_id` (`UUID`); тело запроса не требуется |
-| `DELETE` | `/books/{book_id}/chapters/{chapter_num}/files/{file_id}` | Удаление файла главы | Path: `book_id` (`UUID`), `chapter_num` (`int`), `file_id` (`UUID`); тело запроса не требуется |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `GET` | `/books/{book_id}/chapters/{chapter_num}/files` | `user` | Получение списка файлов главы | Path: `book_id` (`UUID`), `chapter_num` (`int`). Query: `name` (`str`, опционально), `extension` (`str`, опционально), `offset` (`int`, по умолчанию `0`), `limit` (`int`, по умолчанию `100`) |
+| `POST` | `/books/{book_id}/chapters/{chapter_num}/files` | `admin` | Загрузка файла главы | Path: `book_id` (`UUID`), `chapter_num` (`int`). `multipart/form-data`: `file` (`file`, обязательно) |
+| `GET` | `/books/{book_id}/chapters/{chapter_num}/files/{file_id}` | `user` | Скачивание файла главы | Path: `book_id` (`UUID`), `chapter_num` (`int`), `file_id` (`UUID`); тело запроса не требуется |
+| `DELETE` | `/books/{book_id}/chapters/{chapter_num}/files/{file_id}` | `admin` | Удаление файла главы | Path: `book_id` (`UUID`), `chapter_num` (`int`), `file_id` (`UUID`); тело запроса не требуется |
 
 Ограничения загрузок файлов главы:
 
@@ -127,25 +135,25 @@ https://localhost:1408/redoc
 
 ## Избранное
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `POST` | `/books/{book_id}/favorite` | Добавление книги в избранное | Path: `book_id` (`UUID`); тело запроса не требуется |
-| `DELETE` | `/books/{book_id}/favorite` | Удаление книги из избранного | Path: `book_id` (`UUID`); тело запроса не требуется |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `POST` | `/books/{book_id}/favorite` | `user` | Добавление книги в избранное | Path: `book_id` (`UUID`); тело запроса не требуется |
+| `DELETE` | `/books/{book_id}/favorite` | `user` | Удаление книги из избранного | Path: `book_id` (`UUID`); тело запроса не требуется |
 
 ## История чтения
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `GET` | `/books/chapters/read` | Получение списка прочитанных глав | Query: `book_id` (`UUID`, опционально), `offset` (`int >= 0`, по умолчанию `0`), `limit` (`1..1000`, по умолчанию `100`) |
-| `GET` | `/books/{book_id}/chapters/read/count` | Получение количества прочитанных глав книги | Path: `book_id` (`UUID`); тело запроса не требуется |
-| `DELETE` | `/books/{book_id}/history` | Очистка истории чтения книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `GET` | `/books/chapters/read` | `user` | Получение списка прочитанных глав | Query: `book_id` (`UUID`, опционально), `offset` (`int >= 0`, по умолчанию `0`), `limit` (`1..1000`, по умолчанию `100`) |
+| `GET` | `/books/{book_id}/chapters/read/count` | `user` | Получение количества прочитанных глав книги | Path: `book_id` (`UUID`); тело запроса не требуется |
+| `DELETE` | `/books/{book_id}/history` | `user` | Очистка истории чтения книги | Path: `book_id` (`UUID`); тело запроса не требуется |
 
 ## Настройки
 
-| Метод | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `GET` | `/settings/` | Получение текущих настроек приложения | Тело запроса не требуется; нужен пользователь с ролью `admin` |
-| `PATCH` | `/settings/` | Обновление настроек приложения | JSON: `backend` (`"sqlite"` или `"postgres"`, опционально), `echo` (`bool`, опционально), `sqlite_path` (`str`, опционально), `postgres_host` (`str`, опционально), `postgres_port` (`int`, опционально), `postgres_user` (`str`, опционально), `postgres_password` (`str`, опционально), `postgres_name` (`str`, опционально) |
+| Метод | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `GET` | `/settings/` | `admin` | Получение текущих настроек приложения | Тело запроса не требуется |
+| `PATCH` | `/settings/` | `admin` | Обновление настроек приложения | JSON: `backend` (`"sqlite"` или `"postgres"`, опционально), `echo` (`bool`, опционально), `sqlite_path` (`str`, опционально), `postgres_host` (`str`, опционально), `postgres_port` (`int`, опционально), `postgres_user` (`str`, опционально), `postgres_password` (`str`, опционально), `postgres_name` (`str`, опционально) |
 
 Пример `PATCH /settings/` для SQLite:
 
@@ -173,9 +181,9 @@ https://localhost:1408/redoc
 
 ## WebSocket
 
-| Протокол | URL | Назначение | Входные данные |
-| --- | --- | --- | --- |
-| `WS` | `/ws/notifications` | Канал уведомлений для авторизованного пользователя | Query: `token=<access_token>`. После подключения сервер принимает текстовые сообщения, содержимое сообщений не обрабатывается |
+| Протокол | URL | Доступ | Назначение | Входные данные |
+| --- | --- | --- | --- | --- |
+| `WS` | `/ws/notifications` | `user`, token in query | Канал уведомлений для авторизованного пользователя | Query: `token=<access_token>`. После подключения сервер принимает текстовые сообщения, содержимое сообщений не обрабатывается |
 
 Пример подключения:
 

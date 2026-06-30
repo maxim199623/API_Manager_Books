@@ -39,17 +39,17 @@ async def get_session(db_manager: AsyncDBManager = Depends(get_db_manager)):
         yield session
 
 
-async def get_user_repo(session=Depends(get_session)) -> UserRepository:
+async def get_user_repo(session=Depends(get_session, scope="function")) -> UserRepository:
     """Получаем UserRepository"""
     return UserRepository(session)
 
 
-async def get_log_repo(session=Depends(get_session)) -> LogRepository:
+async def get_log_repo(session=Depends(get_session, scope="function")) -> LogRepository:
     """Получаем LogRepository"""
     return LogRepository(session)
 
 
-async def get_reading_progress_repo(session=Depends(get_session)) -> ReadingProgressRepository:
+async def get_reading_progress_repo(session=Depends(get_session, scope="function")) -> ReadingProgressRepository:
     """Получаем ReadingProgressRepository"""
     return ReadingProgressRepository(session)
 
@@ -67,7 +67,7 @@ async def get_user_service(
     )
 
 
-async def get_book_repo(session=Depends(get_session)) -> BookRepository:
+async def get_book_repo(session=Depends(get_session, scope="function")) -> BookRepository:
     """Получаем BookRepository"""
     return BookRepository(session)
 
@@ -86,7 +86,7 @@ async def get_book_file_service(
     )
 
 
-async def get_favorite_book_repo(session=Depends(get_session)) -> FavoriteBookRepository:
+async def get_favorite_book_repo(session=Depends(get_session, scope="function")) -> FavoriteBookRepository:
     """Получаем FavoriteBookRepository"""
     return FavoriteBookRepository(session)
 
@@ -118,12 +118,12 @@ async def get_favorite_service(
     )
 
 
-async def get_book_chapter_repo(session=Depends(get_session)) -> BookChapterRepository:
+async def get_book_chapter_repo(session=Depends(get_session, scope="function")) -> BookChapterRepository:
     """Получаем BookChapterRepository"""
     return BookChapterRepository(session)
 
 
-async def get_book_chapter_file_repo(session=Depends(get_session)) -> BookChapterFileRepository:
+async def get_book_chapter_file_repo(session=Depends(get_session, scope="function")) -> BookChapterFileRepository:
     """Получаем BookChapterFileRepository"""
     return BookChapterFileRepository(session)
 

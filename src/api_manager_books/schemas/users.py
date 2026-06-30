@@ -21,7 +21,7 @@ class UserCreate(UserBase):
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, password: str) -> str:
+    def validate_password(_cls, password: str) -> str:
         """Проверяет минимальную надежность пароля."""
         return validate_password_strength(password)
 
@@ -35,7 +35,7 @@ class UserUpdate(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, password: str | None) -> str | None:
+    def validate_password(_cls, password: str | None) -> str | None:
         """Проверяет пароль, если он передан."""
         if password is None:
             return None
@@ -51,11 +51,3 @@ class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserInDB(UserBase):
-    """Представление пользователя в базе."""
-
-    id: uuid.UUID
-    password_hash: bytes
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

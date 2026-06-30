@@ -47,10 +47,6 @@ class UserStorage(Protocol):
         """Возвращает пользователя по email."""
         ...
 
-    async def set_session_id(self, user_id: uuid.UUID, session_id: uuid.UUID | None) -> None:
-        """Обновляет идентификатор сессии пользователя."""
-        ...
-
     async def set_auth_session(
         self,
         user_id: uuid.UUID,
