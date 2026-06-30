@@ -7,6 +7,7 @@ from api_manager_books.api.security.cert.jwt_keys import ensure_jwt_keys
 
 ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
+MAX_JWT_TOKEN_BYTES = 8192
 
 PRIVATE_KEY_PEM, PUBLIC_KEY_PEM = ensure_jwt_keys()
 
@@ -30,5 +31,8 @@ def decode_access_token(token: str) -> dict:
     """
     Проверить и декодировать JWT с использованием публичного ключа.
     """
+    if len(token.encode("utf-8")) > MAX_JWT_TOKEN_BYTES:
+        raise jwt.InvalidTokenError("Token is too large")
+
     payload = jwt.decode(token, PUBLIC_KEY_PEM, algorithms=[ALGORITHM])
     return payload

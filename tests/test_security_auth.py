@@ -2,8 +2,9 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+import jwt
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, WebSocketException
 from fastapi.security import HTTPAuthorizationCredentials
 
 from api_manager_books.api.security import utils as security_utils
@@ -37,6 +38,21 @@ class FakeUserRepo:
 def bearer() -> HTTPAuthorizationCredentials:
     """Создает Bearer credentials."""
     return HTTPAuthorizationCredentials(scheme="Bearer", credentials="token")
+
+
+class FakeWebSocket:
+    """Минимальный WebSocket для проверки auth dependency."""
+
+    def __init__(self):
+        self.closed = False
+        self.close_code = None
+        self.close_reason = None
+
+    async def close(self, code: int = 1000, reason: str | None = None):
+        """Запоминает параметры закрытия."""
+        self.closed = True
+        self.close_code = code
+        self.close_reason = reason
 
 
 @pytest.mark.asyncio
@@ -80,6 +96,44 @@ async def test_get_current_user_rejects_invalid_sid_payload(monkeypatch):
         await security_utils.get_current_user(credentials=bearer(), user_repo=FakeUserRepo(None))
 
     assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_returns_401_for_oversized_token(monkeypatch):
+    """Проверяет HTTP 401 для слишком большого Bearer token."""
+
+    def reject_oversized_token(token: str):
+        raise jwt.InvalidTokenError
+
+    monkeypatch.setattr(security_utils, "decode_access_token", reject_oversized_token)
+
+    with pytest.raises(HTTPException) as excinfo:
+        await security_utils.get_current_user(credentials=bearer(), user_repo=FakeUserRepo(None))
+
+    assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_from_ws_closes_oversized_token(monkeypatch):
+    """Проверяет закрытие WebSocket auth path для слишком большого token."""
+
+    def reject_oversized_token(token: str):
+        raise jwt.InvalidTokenError
+
+    websocket = FakeWebSocket()
+    monkeypatch.setattr(security_utils, "decode_access_token", reject_oversized_token)
+
+    with pytest.raises(WebSocketException) as excinfo:
+        await security_utils.get_current_user_from_ws(
+            websocket=websocket,
+            token="token",
+            user_repo=FakeUserRepo(None),
+        )
+
+    assert excinfo.value.code == 1008
+    assert websocket.closed is True
+    assert websocket.close_code == 1008
+    assert websocket.close_reason == "Invalid token"
 
 
 @pytest.mark.asyncio

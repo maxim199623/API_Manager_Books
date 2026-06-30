@@ -5,6 +5,7 @@ from fastapi import FastAPI
 # Импорт регистрирует ORM-модели в metadata SQLAlchemy.
 import api_manager_books.db.models  # noqa: F401
 from api_manager_books.api import main_router
+from api_manager_books.api.request_body_limit import RequestBodyLimitMiddleware
 from api_manager_books.bootstrap.admin import create_initial_admin
 from api_manager_books.config.config import SettingsManager
 from api_manager_books.db.base import Base
@@ -41,4 +42,5 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(RequestBodyLimitMiddleware)
 app.include_router(main_router)
