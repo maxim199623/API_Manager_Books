@@ -92,9 +92,9 @@ def repository_settings_manager(
     tmp_path: Path,
 ) -> SettingsManager:
     """Готовит менеджер настроек репозиториев."""
-    manager = SettingsManager(repository_config_path)
+    manager = SettingsManager(repository_config_path, base_dir=tmp_path)
 
-    manager.set_sqlite_path(str(tmp_path / "repository_tests.db"))
+    manager.set_sqlite_path(str(tmp_path / "var" / "repository_tests.db"))
     manager.set_echo(False)
     manager.postgres.user = "postgres"
     manager.postgres.password = "1408"
@@ -129,7 +129,9 @@ async def repository_memory_async_db_manager(
 ) -> AsyncIterator[AsyncDBManager]:
     """Готовит асинхронный менеджер памяти репозиториев."""
     backend = request.param
-    sqlite_path = str(tmp_path / "repository_memory_tests.db")
+    sqlite_file = tmp_path / "var" / "repository_memory_tests.db"
+    sqlite_file.parent.mkdir(parents=True, exist_ok=True)
+    sqlite_path = str(sqlite_file)
     settings = DatabaseSettings(
         backend=backend,
         echo=False,

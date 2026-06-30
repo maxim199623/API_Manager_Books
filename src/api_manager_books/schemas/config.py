@@ -45,7 +45,7 @@ class DatabaseSettings(BaseModel):
 
     @classmethod
     @field_validator("backend")
-    def validate_backend(cls, v: str) -> str:
+    def validate_backend(_cls, v: str) -> str:
         """Проверяет имя backend базы данных."""
         v = v.lower().strip()
         if v not in {"sqlite", "postgres"}:

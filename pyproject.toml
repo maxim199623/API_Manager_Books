@@ -1,8 +1,14 @@
-[tool.poetry]
+[project]
 name = "api_manager_books"
 version = "0.1.0"
 description = ""
-authors = ["Melkor <Melkor@DESKTOP-2F8FHNT>"]
+authors = [
+    { name = "Melkor" },
+]
+requires-python = ">=3.13,<4.0"
+dynamic = ["dependencies"]
+
+[tool.poetry]
 packages = [{ include = "api_manager_books", from = "src" }]
 
 [tool.poetry.dependencies]
@@ -25,9 +31,10 @@ anyio = "^4.11.0"
 pytest = "^9.0.1"
 pytest-asyncio = "^1.3.0"
 ruff = "^0.13.0"
+vulture = "^2.16"
 
 
-[tool.poetry.scripts]
+[project.scripts]
 api-manager-books = "api_manager_books.main:main"
 
 

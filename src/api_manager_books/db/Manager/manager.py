@@ -35,7 +35,7 @@ class AsyncDBManager:
 
         if self._engine.url.get_backend_name() == "sqlite":
             @event.listens_for(self._engine.sync_engine, "connect")
-            def _set_sqlite_pragma(dbapi_conn, connection_record):
+            def _set_sqlite_pragma(dbapi_conn, _connection_record):
                 """Настроить SQLite для FK и ожидания блокировок."""
                 cursor = dbapi_conn.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")

@@ -38,12 +38,10 @@ def settings_manager(config_path: Path, tmp_path: Path) -> SettingsManager:
     SettingsManager, который создаёт config.ini в tmp-дереве,
     и настраивает sqlite на временный файл.
     """
-    manager = SettingsManager(config_path)
+    manager = SettingsManager(config_path, base_dir=tmp_path)
 
-    # БД в tmp-директории, чтобы ничего не засорять
-    db_file = tmp_path / "test.db"
     manager.set_backend("sqlite")
-    manager.set_sqlite_path(str(db_file))
+    manager.set_sqlite_path(str(tmp_path / "var" / "test.db"))
     manager.set_echo(False)
     manager.save()
 
@@ -183,9 +181,9 @@ class TestAsyncDBManager:
         """Проверяет перенос данных, когда строк больше одного батча."""
         source_manager = AsyncDBManager(settings_manager.db, BaseTestItem)
 
-        target_settings = SettingsManager(tmp_path / "target_config.ini")
+        target_settings = SettingsManager(tmp_path / "target_config.ini", base_dir=tmp_path)
         target_settings.set_backend("sqlite")
-        target_settings.set_sqlite_path(str(tmp_path / "target.db"))
+        target_settings.set_sqlite_path(str(tmp_path / "var" / "target.db"))
         target_settings.set_echo(False)
         target_settings.save()
         target_manager = AsyncDBManager(target_settings.db, BaseTestItem)

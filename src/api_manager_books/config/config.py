@@ -43,9 +43,10 @@ class AppSettings(BaseModel):
 class SettingsManager:
     """Менеджер настроек"""
 
-    def __init__(self, path: str | Path = "config.ini"):
+    def __init__(self, path: str | Path = "config.ini", *, base_dir: Path = PROJECT_ROOT):
         """Загружает настройки из файла."""
         self.path = Path(path)
+        self.base_dir = Path(base_dir)
         self._parser = ConfigParser()
 
         if self.path.exists():
@@ -63,6 +64,13 @@ class SettingsManager:
 
     # ---------- внутреннее чтение из ConfigParser ----------
 
+    def _normalize_sqlite_path(self, path: str) -> str:
+        """Нормализует SQLite путь и создает runtime-каталог."""
+        normalized = normalize_sqlite_path(path, base_dir=self.base_dir)
+        sqlite_file = (self.base_dir / normalized).resolve()
+        sqlite_file.parent.mkdir(parents=True, exist_ok=True)
+        return normalized
+
     def _load_from_parser(self) -> AppSettings:
         """Читает настройки из ConfigParser."""
         if "database" not in self._parser:
@@ -75,7 +83,8 @@ class SettingsManager:
         sqlite_settings = None
         if "sqlite" in self._parser:
             sqlite_section = self._parser["sqlite"]
-            sqlite_settings = SQLiteSettings(path=sqlite_section.get("path", "var/app.db"))
+            sqlite_path = self._normalize_sqlite_path(sqlite_section.get("path", "var/app.db"))
+            sqlite_settings = SQLiteSettings(path=sqlite_path)
 
         postgres_settings = None
         if "postgres" in self._parser:
@@ -214,6 +223,7 @@ class SettingsManager:
         Стандартные настройки, если файла нет.
         По умолчанию: sqlite var/app.db, echo = false, postgres с дефолтами.
         """
+        self._normalize_sqlite_path("var/app.db")
         sqlite_defaults = SQLiteSettings(path="var/app.db")
         postgres_defaults = PostgresSettings(
             host="localhost",

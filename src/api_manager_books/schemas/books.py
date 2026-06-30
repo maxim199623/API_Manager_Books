@@ -26,7 +26,7 @@ class BookBase(BaseModel):
 
     @field_validator("cover", "file", mode="before")
     @classmethod
-    def decode_base64(cls, v):
+    def decode_base64(_cls, v):
         """Декодирует бинарные поля из base64."""
         if v is None:
             return None
@@ -90,7 +90,7 @@ class BookUpdate(BaseModel):
 
     @field_validator("cover", "file", mode="before")
     @classmethod
-    def decode_base64(cls, v):
+    def decode_base64(_cls, v):
         """Декодирует бинарные поля из base64."""
         if v is None:
             return None

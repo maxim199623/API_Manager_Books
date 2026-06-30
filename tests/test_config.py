@@ -18,7 +18,7 @@ def make_manager(config_path):
 
     def _make():
         """Создает временный конфиг настроек."""
-        return SettingsManager(config_path)
+        return SettingsManager(config_path, base_dir=config_path.parent)
 
     return _make
 
@@ -98,7 +98,7 @@ class Test_load_settings:
         assert manager.sqlite is not None
         old_path = manager.sqlite.path
 
-        new_path = "./library.db"
+        new_path = "var/library.db"
         manager.set_sqlite_path(new_path)
         manager.save()
 
@@ -108,7 +108,7 @@ class Test_load_settings:
         assert manager2.sqlite.path != old_path
 
         # одновременно проверим URL
-        assert manager2.db.get_url == f"sqlite+aiosqlite:///{new_path}"
+        assert manager2.db.get_url == "sqlite+aiosqlite:///var/library.db"
 
         parser = ConfigParser()
         parser.read(config_path, encoding="utf-8")
@@ -166,12 +166,12 @@ class Test_load_settings:
 
         # стартуем с sqlite
         manager.set_backend("sqlite")
-        manager.set_sqlite_path("./first.db")
+        manager.set_sqlite_path("var/first.db")
         manager.save()
 
         m1 = make_manager()
         assert m1.db.backend == "sqlite"
-        assert m1.db.get_url == "sqlite+aiosqlite:///./first.db"
+        assert m1.db.get_url == "sqlite+aiosqlite:///var/first.db"
 
         # переключаемся на postgres
         m1.set_backend("postgres")
@@ -225,3 +225,57 @@ def test_normalize_sqlite_path_allows_memory_only_when_requested(tmp_path):
         normalize_sqlite_path(":memory:", base_dir=tmp_path)
 
     assert normalize_sqlite_path(":memory:", base_dir=tmp_path, allow_memory=True) == ":memory:"
+
+
+def write_config(path: Path, sqlite_path: str) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "[database]",
+                "backend = sqlite",
+                "echo = false",
+                "",
+                "[sqlite]",
+                f"path = {sqlite_path}",
+                "",
+                "[postgres]",
+                "host = localhost",
+                "port = 5432",
+                "user = postgres",
+                "password = postgres",
+                "name = myapp",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_load_config_rejects_sqlite_path_outside_var(tmp_path):
+    """Проверяет, что config.ini не может увести SQLite БД из var."""
+    config_file = tmp_path / "config.ini"
+    write_config(config_file, "app.db")
+
+    with pytest.raises(ValueError, match="inside var"):
+        SettingsManager(config_file, base_dir=tmp_path)
+
+
+def test_load_config_normalizes_sqlite_path_and_creates_var(tmp_path):
+    """Проверяет нормализацию SQLite пути и создание runtime-каталога."""
+    config_file = tmp_path / "config.ini"
+    write_config(config_file, "var/../var/books.db")
+
+    manager = SettingsManager(config_file, base_dir=tmp_path)
+
+    assert manager.sqlite is not None
+    assert manager.sqlite.path == "var/books.db"
+    assert (tmp_path / "var").is_dir()
+
+
+def test_first_start_creates_var_directory(config_path: Path, make_manager):
+    """Проверяет создание runtime-каталога при первом запуске."""
+    manager = make_manager()
+
+    assert manager.sqlite is not None
+    assert manager.sqlite.path == "var/app.db"
+    assert (config_path.parent / "var").is_dir()
