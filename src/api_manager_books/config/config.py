@@ -1,11 +1,36 @@
 from configparser import ConfigParser
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from pydantic import BaseModel
 
 from api_manager_books.schemas.config import DatabaseSettings, PostgresSettings, SQLiteSettings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _normalize_relative_var_path(raw_path: str) -> Path:
+    normalized_path = raw_path.replace("\\", "/")
+    windows_path = PureWindowsPath(raw_path)
+    posix_path = PurePosixPath(normalized_path)
+
+    if windows_path.drive or windows_path.root or posix_path.root:
+        raise ValueError("sqlite path must stay inside var directory")
+
+    parts: list[str] = []
+    for part in posix_path.parts:
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if not parts:
+                raise ValueError("sqlite path must stay inside var directory")
+            parts.pop()
+            continue
+        parts.append(part)
+
+    if not parts or parts[0] != "var":
+        raise ValueError("sqlite path must stay inside var directory")
+
+    return Path(*parts)
 
 
 def normalize_sqlite_path(
@@ -26,8 +51,8 @@ def normalize_sqlite_path(
 
     base = base_dir.resolve()
     var_dir = (base / "var").resolve()
-    candidate = Path(raw_path)
-    resolved = candidate.resolve() if candidate.is_absolute() else (base / candidate).resolve()
+    candidate = _normalize_relative_var_path(raw_path)
+    resolved = (base / candidate).resolve()
 
     if not resolved.is_relative_to(var_dir):
         raise ValueError("sqlite path must stay inside var directory")
@@ -142,10 +167,11 @@ class SettingsManager:
 
     def set_sqlite_path(self, path: str) -> None:
         """Изменить путь к SQLite базе."""
+        normalized = self._normalize_sqlite_path(path)
         if self._settings.database.sqlite is None:
-            self._settings.database.sqlite = SQLiteSettings(path=path)
+            self._settings.database.sqlite = SQLiteSettings(path=normalized)
         else:
-            self._settings.database.sqlite.path = path
+            self._settings.database.sqlite.path = normalized
 
     def set_postgres(
         self,
