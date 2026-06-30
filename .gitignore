@@ -290,3 +290,4 @@ cython_debug/
 /app.db.backup-20260628-182309
 /app.db-journal
 /docs/database-improvement-plan.md
+/docs/dependabot-alerts-fix-plan.md
