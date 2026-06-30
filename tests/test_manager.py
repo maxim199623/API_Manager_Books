@@ -33,15 +33,16 @@ def config_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def settings_manager(config_path: Path, tmp_path: Path) -> SettingsManager:
+def settings_manager(config_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SettingsManager:
     """
     SettingsManager, который создаёт config.ini в tmp-дереве,
     и настраивает sqlite на временный файл.
     """
+    monkeypatch.chdir(tmp_path)
     manager = SettingsManager(config_path, base_dir=tmp_path)
 
     manager.set_backend("sqlite")
-    manager.set_sqlite_path(str(tmp_path / "var" / "test.db"))
+    manager.set_sqlite_path("var/test.db")
     manager.set_echo(False)
     manager.save()
 
@@ -183,7 +184,7 @@ class TestAsyncDBManager:
 
         target_settings = SettingsManager(tmp_path / "target_config.ini", base_dir=tmp_path)
         target_settings.set_backend("sqlite")
-        target_settings.set_sqlite_path(str(tmp_path / "var" / "target.db"))
+        target_settings.set_sqlite_path("var/target.db")
         target_settings.set_echo(False)
         target_settings.save()
         target_manager = AsyncDBManager(target_settings.db, BaseTestItem)

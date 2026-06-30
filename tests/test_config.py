@@ -213,6 +213,39 @@ def test_normalize_sqlite_path_rejects_absolute_outside_var(tmp_path):
         normalize_sqlite_path(str(outside), base_dir=tmp_path)
 
 
+def test_normalize_sqlite_path_rejects_absolute_inside_var(tmp_path):
+    """Проверяет запрет абсолютного пути даже внутри runtime-каталога."""
+    inside = tmp_path / "var" / "inside.db"
+
+    with pytest.raises(ValueError, match="inside var"):
+        normalize_sqlite_path(str(inside), base_dir=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "sqlite_path",
+    [
+        r"C:\app\var\books.db",
+        "C:/app/var/books.db",
+        r"\\server\share\books.db",
+    ],
+)
+def test_normalize_sqlite_path_rejects_windows_anchored_paths(tmp_path, sqlite_path: str):
+    """Проверяет запрет Windows drive и UNC путей."""
+    with pytest.raises(ValueError, match="inside var"):
+        normalize_sqlite_path(sqlite_path, base_dir=tmp_path)
+
+
+def test_normalize_sqlite_path_rejects_escape_after_var_prefix(tmp_path):
+    """Проверяет запрет выхода наверх после начального var."""
+    with pytest.raises(ValueError, match="inside var"):
+        normalize_sqlite_path("var/../../outside.db", base_dir=tmp_path)
+
+
+def test_normalize_sqlite_path_accepts_windows_separators_inside_var(tmp_path):
+    """Проверяет нормализацию Windows-разделителей в безопасном пути."""
+    assert normalize_sqlite_path(r"var\books.db", base_dir=tmp_path) == "var/books.db"
+
+
 def test_normalize_sqlite_path_rejects_empty_string(tmp_path):
     """Проверяет запрет пустого пути."""
     with pytest.raises(ValueError, match="must not be empty"):
@@ -270,6 +303,16 @@ def test_load_config_normalizes_sqlite_path_and_creates_var(tmp_path):
     assert manager.sqlite is not None
     assert manager.sqlite.path == "var/books.db"
     assert (tmp_path / "var").is_dir()
+
+
+def test_set_sqlite_path_normalizes_before_saving_in_memory(make_manager):
+    """Проверяет, что программное обновление не хранит сырой путь."""
+    manager = make_manager()
+
+    manager.set_sqlite_path("var/../var/books.db")
+
+    assert manager.sqlite is not None
+    assert manager.sqlite.path == "var/books.db"
 
 
 def test_first_start_creates_var_directory(config_path: Path, make_manager):

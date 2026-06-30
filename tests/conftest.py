@@ -90,11 +90,13 @@ def repository_config_path(tmp_path: Path) -> Path:
 def repository_settings_manager(
     repository_config_path: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> SettingsManager:
     """Готовит менеджер настроек репозиториев."""
+    monkeypatch.chdir(tmp_path)
     manager = SettingsManager(repository_config_path, base_dir=tmp_path)
 
-    manager.set_sqlite_path(str(tmp_path / "var" / "repository_tests.db"))
+    manager.set_sqlite_path("var/repository_tests.db")
     manager.set_echo(False)
     manager.postgres.user = "postgres"
     manager.postgres.password = "1408"
