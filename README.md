@@ -19,11 +19,14 @@ API подходит для клиентского приложения, адм�
 - [Установка](#установка)
 - [Настройка базы данных](#настройка-базы-данных)
 - [Переменные окружения](#переменные-окружения)
+- [TLS-сертификат для production](#tls-сертификат-для-production)
 - [Запуск](#запуск)
+- [Миграции БД](#миграции-бд)
 - [Использование](#использование)
 - [API](#api)
 - [Политика загрузки файлов](#политика-загрузки-файлов)
 - [Архитектура](#архитектура)
+- [Проверки](#проверки)
 - [Лицензия](#лицензия)
 
 ## Возможности
@@ -79,6 +82,20 @@ poetry install
 
 Формат настроек базы данных показан в `config.example.ini`.
 
+Перед запуском создайте локальный `config.ini` из примера:
+
+```bash
+cp config.example.ini config.ini
+```
+
+На Windows можно скопировать файл вручную или выполнить:
+
+```powershell
+Copy-Item config.example.ini config.ini
+```
+
+`config.ini` содержит локальные настройки и не должен попадать в git.
+
 Минимальная SQLite-конфигурация:
 
 ```ini
@@ -113,11 +130,12 @@ name = api_manager_books
 
 | Переменная | Описание | Пример |
 | --- | --- | --- |
-| `APP_ENV` | Режим запуска. Для штатного запуска должен быть `prod`. | `prod` |
+| `APP_ENV` | Режим штатного запуска. Должен быть `prod`. | `prod` |
 | `APP_HOST` | Хост, на котором слушает Uvicorn. | `0.0.0.0` |
 | `APP_PORT` | Порт сервера. | `1408` |
 | `TLS_CERT_FILE` | Путь к TLS-сертификату. | `C:\certs\fullchain.pem` |
-| `TLS_KEY_FILE` | Путь к TLS-ключу. | `C:\certs\privkey.pem` |
+| `TLS_KEY_FILE` | Путь к TLS-ключу. | `C:\certs\tls_private.pem` |
+| `JWT_KEY_DIR` | Каталог runtime JWT-ключей. Если не задан, используется `var/security/jwt`. | `C:\app\secrets\jwt` |
 | `INITIAL_ADMIN_EMAIL` | Email первого администратора при пустой таблице пользователей. | `admin@example.com` |
 | `INITIAL_ADMIN_PASSWORD` | Пароль первого администратора. Минимум 12 символов, не `default`. | `change-this-long-password` |
 
@@ -125,9 +143,31 @@ name = api_manager_books
 
 На Linux/macOS значения с пробелами нужно экранировать или заключать в кавычки по правилам shell.
 
+## TLS-сертификат для production
+
+Приложение не выпускает production-сертификат самостоятельно. Перед запуском нужно получить сертификат и приватный ключ у внешнего CA или ACME-провайдера и передать пути к PEM-файлам через переменные окружения.
+
+Для получения сертификата подготовьте:
+
+- доменное имя сервера;
+- DNS A/AAAA-записи, указывающие на сервер;
+- email владельца или администратора сертификата;
+- способ подтверждения домена: HTTP-01, DNS-01 или способ, который поддерживает провайдер;
+- путь хранения certificate chain/fullchain PEM;
+- путь хранения private key PEM;
+- права чтения этих файлов для процесса приложения;
+- процесс продления сертификата до истечения срока.
+
+`TLS_CERT_FILE` должен указывать на certificate chain/fullchain PEM.
+`TLS_KEY_FILE` должен указывать на private key PEM.
+
+Текущий запуск передает в Uvicorn только `ssl_certfile` и `ssl_keyfile`, поэтому отдельный пароль к приватному ключу не настраивается.
+
 ## Запуск
 
-Скрипты запуска проверяют окружение, устанавливают зависимости и запускают Poetry entrypoint `api-manager-books`.
+Скрипты запуска проверяют production-окружение, устанавливают runtime-зависимости и запускают Poetry entrypoint `api-manager-books`.
+
+Перед запуском должны быть заданы `APP_ENV=prod`, `TLS_CERT_FILE`, `TLS_KEY_FILE`, а при первой инициализации пустой БД также `INITIAL_ADMIN_EMAIL` и `INITIAL_ADMIN_PASSWORD`.
 
 Windows CMD:
 
@@ -158,6 +198,12 @@ https://localhost:1408
 ```bash
 poetry run api-manager-books
 ```
+
+## Миграции БД
+
+Схема БД управляется Alembic. Миграции находятся в каталоге `migrations/` и применяются приложением при старте.
+
+При смене backend через API настроек сервис также применяет миграции к целевой БД перед переносом данных.
 
 ## Использование
 
@@ -201,6 +247,34 @@ https://localhost:1408/redoc
 ## Архитектура
 
 Краткое описание слоев и направления зависимостей находится в [docs/architecture.md](docs/architecture.md).
+
+## Проверки
+
+Линтер:
+
+```bash
+poetry run ruff check .
+```
+
+Все тесты:
+
+```bash
+poetry run pytest tests -q
+```
+
+Только SQLite-профиль репозиторных тестов:
+
+```bash
+API_MANAGER_BOOKS_REPOSITORY_BACKENDS=sqlite poetry run pytest tests -q
+```
+
+Только PostgreSQL-профиль репозиторных тестов:
+
+```bash
+API_MANAGER_BOOKS_REPOSITORY_BACKENDS=postgres poetry run pytest tests -q
+```
+
+PostgreSQL-профиль требует доступный PostgreSQL с параметрами, которые используют тестовые фикстуры.
 
 ## Лицензия
 

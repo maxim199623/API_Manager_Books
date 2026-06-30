@@ -62,22 +62,31 @@ HTTP-слой может преобразовывать ошибки серви�
 
 Репозитории не знают про FastAPI: они не принимают `Request`, не используют dependencies, не формируют HTTP-ответы и не выбирают HTTP-статусы.
 
-`AsyncDBManager` создает асинхронный engine, session factory, сессии и схему БД. Модели регистрируются через импорт `api_manager_books.db.models`.
+`AsyncDBManager` создает асинхронный engine, session factory и сессии. Схема БД управляется Alembic-миграциями из каталога `migrations/`.
 
 ## Запуск приложения
 
 Точка входа Poetry: `api_manager_books.main:main`.
 
-При запуске:
+При production-запуске:
 
-- создается или переиспользуется self-signed TLS-сертификат;
-- `uvicorn` запускает FastAPI-приложение на `0.0.0.0:1408`;
+- `api_manager_books.main:main` читает `APP_ENV`, `APP_HOST`, `APP_PORT`, `TLS_CERT_FILE`, `TLS_KEY_FILE`;
+- при `APP_ENV=prod` проверяется наличие путей к TLS-сертификату и приватному ключу;
+- `uvicorn` запускает FastAPI-приложение с `ssl_certfile` и `ssl_keyfile`;
 - `FastAPI(lifespan=...)` читает `config.ini`;
 - создается `AsyncDBManager`;
-- создаются таблицы базы данных;
-- если пользователей нет, создается дефолтный администратор;
+- Alembic применяет миграции к текущей БД до `head`;
+- если пользователей нет, первый администратор создается из `INITIAL_ADMIN_EMAIL` и `INITIAL_ADMIN_PASSWORD`;
 - `db_manager` и `settings_manager` сохраняются в `app.state`;
 - при остановке приложения закрываются подключения к БД.
+
+## Runtime-файлы и секреты
+
+Production TLS-сертификат и приватный ключ создаются внешним CA/ACME-инструментом и передаются приложению через `TLS_CERT_FILE` и `TLS_KEY_FILE`.
+
+JWT-ключи хранятся в каталоге из `JWT_KEY_DIR`. Если переменная не задана, используется `var/security/jwt`.
+
+`config.ini`, `.env.prod.local`, TLS-ключи, JWT-ключи и реальные пароли БД не должны храниться в git.
 
 ## WebSocket
 
