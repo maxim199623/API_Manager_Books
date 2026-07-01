@@ -1,0 +1,102 @@
+name: release
+
+on:
+  workflow_run:
+    workflows: ["ci"]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout successful CI commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Read project version
+        id: version
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
+          import tomllib
+
+          with open("pyproject.toml", "rb") as file:
+              version = tomllib.load(file)["project"]["version"]
+
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit(f"Unsupported version format: {version}")
+
+          print(f"version={version}")
+          print(f"tag=v{version}")
+          PY
+
+      - name: Check existing release
+        id: existing_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG already exists. Skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate release notes
+        if: steps.existing_release.outputs.exists == 'false'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          previous_tag="$(git tag --merged HEAD --sort=-version:refname --list 'v[0-9]*.[0-9]*.[0-9]*' | grep -v "^$TAG$" | head -n 1)"
+
+          if [ -n "$previous_tag" ]; then
+            git log --reverse --pretty=format:"- %s" "$previous_tag..HEAD" > release-notes.md
+          else
+            git log --reverse --pretty=format:"- %s" HEAD > release-notes.md
+          fi
+
+          if [ ! -s release-notes.md ]; then
+            echo "Нет изменений для описания." > release-notes.md
+          fi
+
+      - name: Build package
+        if: steps.existing_release.outputs.exists == 'false'
+        run: poetry build
+
+      - name: Create GitHub Release
+        if: steps.existing_release.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --notes-file release-notes.md

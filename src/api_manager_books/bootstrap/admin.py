@@ -1,3 +1,4 @@
+import logging
 import os
 
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from api_manager_books.schemas.enums import UserRole
 from api_manager_books.schemas.users import UserCreate
 from api_manager_books.security.password_policy import WeakPasswordError, validate_password_strength
 
+logger = logging.getLogger(__name__)
+
 
 class InitialAdminRequiredError(RuntimeError):
     """Начальный администратор не настроен безопасно."""
@@ -19,6 +22,7 @@ def _initial_admin_credentials() -> tuple[str, str]:
     password = os.environ.get("INITIAL_ADMIN_PASSWORD", "")
 
     if not email or not password:
+        logger.error("Initial admin credentials are required for first startup")
         raise InitialAdminRequiredError(
             "INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD are required for first startup"
         )
@@ -26,6 +30,7 @@ def _initial_admin_credentials() -> tuple[str, str]:
     try:
         validate_password_strength(password)
     except WeakPasswordError as exc:
+        logger.error("Initial admin password is too weak")
         raise InitialAdminRequiredError("INITIAL_ADMIN_PASSWORD is too weak") from exc
 
     return email, password
@@ -39,6 +44,7 @@ async def create_initial_admin(db_manager: AsyncDBManager) -> None:
         exists = result.scalar_one_or_none()
 
         if exists is not None:
+            logger.info("Initial admin bootstrap skipped: users table is not empty")
             return
 
         email, password = _initial_admin_credentials()
@@ -50,3 +56,4 @@ async def create_initial_admin(db_manager: AsyncDBManager) -> None:
                 role=UserRole.ADMIN,
             )
         )
+        logger.info("Initial admin created: email=%s", email)
