@@ -61,6 +61,37 @@ async def test_alembic_upgrade_head_creates_reading_progress_and_indexes(tmp_pat
         await engine.dispose()
 
 
+async def test_run_migrations_logs_success_for_sqlite(tmp_path: Path, caplog):
+    db_path = tmp_path / "schema.db"
+    database_url = f"sqlite+aiosqlite:///{db_path.as_posix()}"
+
+    with caplog.at_level("INFO"):
+        await run_migrations(database_url)
+
+    assert db_path.exists()
+    assert "Starting database migrations to head" in caplog.text
+    assert "Database migrations completed" in caplog.text
+
+
+async def test_sqlite_preflight_reports_temp_file_cleanup_error(tmp_path: Path, monkeypatch):
+    from api_manager_books.db import migrations
+
+    db_path = tmp_path / "schema.db"
+
+    def fail_cleanup(_path):
+        raise PermissionError("delete denied")
+
+    monkeypatch.setattr(migrations, "_unlink_if_exists", fail_cleanup)
+
+    with pytest.raises(migrations.DatabasePreflightError) as exc_info:
+        migrations._preflight_sqlite_database(f"sqlite+aiosqlite:///{db_path.as_posix()}")
+
+    message = str(exc_info.value)
+    assert "SQLite database preflight failed" in message
+    assert "delete temporary file" in message
+    assert str(tmp_path) in message
+
+
 async def test_alembic_backfills_reading_progress_from_existing_logs(tmp_path: Path):
     """Проверяет перенос старой истории чтения из db_logs."""
     db_path = tmp_path / "backfill.db"

@@ -105,3 +105,35 @@ async def test_non_empty_users_table_skips_initial_admin_env(db_manager, monkeyp
 
     assert len(users) == 1
     assert users[0].email == "existing@example.com"
+
+
+async def test_initial_admin_logs_missing_env(db_manager, monkeypatch, caplog):
+    monkeypatch.delenv("INITIAL_ADMIN_EMAIL", raising=False)
+    monkeypatch.delenv("INITIAL_ADMIN_PASSWORD", raising=False)
+
+    with caplog.at_level("ERROR"):
+        with pytest.raises(InitialAdminRequiredError):
+            await create_initial_admin(db_manager)
+
+    assert "Initial admin credentials are required" in caplog.text
+
+
+async def test_non_empty_users_table_logs_skip(db_manager, monkeypatch, caplog):
+    async with db_manager.session() as session:
+        repo = UserRepository(session)
+        await repo.create_user(
+            UserCreate(
+                email="existing-log@example.com",
+                password="existing-password",
+                role=UserRole.USER,
+            )
+        )
+        await session.commit()
+
+    monkeypatch.delenv("INITIAL_ADMIN_EMAIL", raising=False)
+    monkeypatch.delenv("INITIAL_ADMIN_PASSWORD", raising=False)
+
+    with caplog.at_level("INFO"):
+        await create_initial_admin(db_manager)
+
+    assert "Initial admin bootstrap skipped" in caplog.text
