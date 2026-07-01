@@ -84,10 +84,6 @@ jobs:
             echo "Нет изменений для описания." > release-notes.md
           fi
 
-      - name: Build package
-        if: steps.existing_release.outputs.exists == 'false'
-        run: poetry build
-
       - name: Create GitHub Release
         if: steps.existing_release.outputs.exists == 'false'
         env:
@@ -96,7 +92,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          gh release create "$TAG" dist/* \
+          gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "$VERSION" \
             --notes-file release-notes.md
